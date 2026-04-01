@@ -27,7 +27,7 @@ tags:
                     |   → FragmentShader
                     |   → LateZ
                     | Test & Blending
-                    |   → AlphaTest → StencilTest → DepthTest → 
+                    |   → StencilTest → AlphaTest → DepthTest → 
                     |   → AlphaBlend
                     |   → FrameBuffer
 ```
@@ -55,14 +55,14 @@ tags:
   - **合并Test&Blending**测试混合
     - **Test**测试
       - → StencilTest：裁剪测试 判断像素是否通过模板缓冲区的规则
-      - → AlphaTest：
+      - → AlphaTest：（AlphaTest/Clip/Discard） 
         - 无法在frag之前决定是否剔除， AlphaTest可**在深度测试执行前**在传入片段上运行，根据物体的透明度来决定是否渲染。
-        - （AlphaTest/Clip/Discard） clip(alpha - threshold); 或 if (alpha < threshold) discard;
       - → DepthTest：位于像素处理阶段的测试合并阶段
     - **AlphaBlend** 混合(可配置) shader中的选项，blend命令等
       - 经过Test的进入Blend，需要framebuffer混合，无法执行深度测试，写入缓冲区
   - **抖动显示**
   - **逻辑操作**
+  - **FrameBuffer**
 ---
 
 ```
@@ -496,6 +496,16 @@ Early-Z是不稳定，当渲染顺序是从远往近处渲染时，Early-Z将不
 Early-z渲染时机![alt text](https://res.cloudinary.com/dyjxpjxro/image/upload/v1775032685/Early-z渲染时机_kvhkde.png)
 
 ### **Late Z**
+
+
+**为什么会退化到 Late Z**
+
+1. GPU 默认走 Early Z 路径（光栅化后、PS 前做深度测试）。但以下情况会强制退化为 Late Z：
+1. discard / clip() — PS 可能丢弃片元，深度值不确定
+2. Alpha Test — 需要 PS 计算 alpha 后才能决定是否保留
+3. 手动写入深度 — gl_FragDepth（OpenGL）/ SV_Depth（DX），PS 修改了深度值，Early Z 的结果不再可靠
+4. 开启 Alpha-to-Coverage — 部分硬件会退化
+
 late Z的算法很简单，对于每个像素，它储存从摄像机到与摄像机最靠近的图元的Z值。
 这意味着当图元被渲染到某个像素时，其图元的Z值会被计算并与Z缓存中相同像素的Z值相比较，如果新的Z值小于Z缓存中的值，那么将被渲染到这像素的图元离摄像机比之前的图元更近。
 那么那个像素的Z值和颜色会被即将绘制的图元所更新。
@@ -512,6 +522,7 @@ glEnable(GL_SCISSOR_TEST); // 启用剪裁测试
 用glScissor()函数，可以定义一个任意屏幕校准矩形，在该矩形外的片元将被忽略。如果一个点在裁剪区域外，我希望它彻底不渲染，也不要对缓冲区造成任何影响，所以优先级最高
 
 ### 透明 AlphaTest
+clip(alpha - threshold); 或 if (alpha < threshold) discard;
 glEnable(GL_ALPHA_TEST);通过片元数据，可以获取该片元的alpha值，如果alpha值小于某个数的话，则直接将该片元丢弃，不进行渲染，这是非常“粗暴”的（即只渲染透明度在某一范围内的片元），可以用来做一些树叶镂空的效果
 Alpha测试只能在RGBA模式下进行，如果片元的alpha值超出一个固定参照值，片元将被忽略，这个比较函数可以用glAlphaFunc()实现并设定参考值。
 
@@ -535,4 +546,4 @@ blend也就是透明度混合，简单地说就是用当前片元的透明度作
 Unity shader里的诸如Blend SrcAlpha OneMinusSrcAlpha之类的命令就是用来配置透明度混合的。
 
 ### **抖动**
-启动抖动 glEnable(GL_DITHER)如果启动抖动，片元的颜色或者颜色索引采用抖动算法。这个算法只需要片元的颜色值和它的x和y坐标
+启动抖动 glEnable(GL_DITHER)如果启动抖动，片元的颜色或者颜色索引采用抖动算法。这个算法只需要片元的颜色值和它的x和y坐
