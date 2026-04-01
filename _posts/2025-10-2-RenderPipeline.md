@@ -4,7 +4,7 @@ title:      渲染管线
 subtitle:   渲染管线
 date:       2025-10-2
 author:     kang
-header-img: img/渲染管线.png
+header-img: img/post-bg-pipeline.jpg
 catalog: true
 tags:
     - 渲染
