@@ -4,7 +4,7 @@ title:      渲染管线
 subtitle:   渲染管线
 date:       2025-10-2
 author:     kang
-header-img: img/post-bg-cook.jpg
+header-img: https://res.cloudinary.com/dyjxpjxro/image/upload/v1775033730/渲染管线_cfuiuq.png
 catalog: true
 tags:
     - 渲染
