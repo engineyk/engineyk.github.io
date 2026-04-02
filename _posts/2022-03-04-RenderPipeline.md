@@ -4,7 +4,7 @@ title:      渲染管线
 subtitle:   渲染管线
 date:       2022-3-4
 author:     kang
-header-img: img/post-bg-pipeline.jpg
+header-img: img/post-bg-ocenwar.jpg
 catalog: true
 tags:
     - 渲染
