@@ -7,7 +7,7 @@ author:     kang
 header-img: img/post-bg-ocenwar.jpg
 catalog: true
 tags:
-    - 渲染
+    - Rendering
 ---
 
 # <center>渲染管线<center>
@@ -16,18 +16,18 @@ tags:
 1. ApplicationStage | 应用阶段
 2. GeometryStage    | 几何阶段
                     |   → VertexShader → ShapeAssembly → GemotryShader
-                    | 
+                    |
 3. Rasterization    | 光栅化
                     |   → Primitive Assembly
                     |   → Triangle Setup → Triangle Traversal
-                    | 
+                    |
 4. Per-Pixel Stage  | 逐像素阶段
                     |   → PreZ
                     |   → EarlyZ
                     |   → FragmentShader
                     |   → LateZ
                     | Test & Blending
-                    |   → StencilTest → AlphaTest → DepthTest → 
+                    |   → StencilTest → AlphaTest → DepthTest
                     |   → AlphaBlend
                     |   → FrameBuffer
 ```
@@ -49,13 +49,13 @@ tags:
 - **4. 逐像素阶段**
   - **Vertex Attribute Interpolation**（不可控）顶点属性插值
   - **PreZ** (opaque+mask)：(only Depth) 利用EarlyZ（提前深度测试），先做深度判断再着色。
-  - **EarlyZ**：(Depth == Equal, only color，no clip, skip occluded fragments) ← 正常路径 
+  - **EarlyZ**：(Depth == Equal, only color，no clip, skip occluded fragments) ← 正常路径
   - **Pixel Fragment Shader** （可控）插值与像素着色器 计算颜色、Alpha
-  - **LateZ**：有discard、alpha test, 会**延迟DepthTest/写入**，在Pixel之后DepthTest；否则利用EarlyZ ← 退化路径 
+  - **LateZ**：有discard、alpha test, 会**延迟DepthTest/写入**，在Pixel之后DepthTest；否则利用EarlyZ ← 退化路径
   - **合并Test&Blending**测试混合
     - **Test**测试
       - → StencilTest：裁剪测试 判断像素是否通过模板缓冲区的规则
-      - → AlphaTest：（AlphaTest/Clip/Discard） 
+      - → AlphaTest：（AlphaTest/Clip/Discard）
         - 无法在frag之前决定是否剔除， AlphaTest可**在深度测试执行前**在传入片段上运行，根据物体的透明度来决定是否渲染。
       - → DepthTest：位于像素处理阶段的测试合并阶段
     - **AlphaBlend** 混合(可配置) shader中的选项，blend命令等
