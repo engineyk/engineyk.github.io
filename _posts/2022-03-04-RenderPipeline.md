@@ -254,24 +254,24 @@ Vertex Shader → [Tessellation] → [Geometry Shader]
     → Rasterization 
 ```
 
-- **输入：图元（Vertex顶点）**
-- 步骤
-  1. **VertexShader** 顶点着色器
-     - 顶点的空间变换
-     - 顶点着色
-  2. **Tessellation**(可选) 曲面细分
-     - 细分图元
-  3. **GeometryShader**(可选) 几何着色器
-     - 逐图元着色操作
-     - 添加删除图元
-  4. **Projection**(可控) 投影
-  5. **Clipping**(不可控) 裁剪
-     - 区域裁剪
-     - Camera视野范围
-  6. **DNC**(不可控) 
-  7. **Screen Mapping**(不可控) 屏幕映射
-  8.  **Back-face Culling**(可配置) 背面剔除
-- 输出：屏幕二维坐标
+### **输入：图元（Vertex顶点）**
+### 步骤
+1. **VertexShader** 顶点着色器
+  - 顶点的空间变换
+  - 顶点着色
+2. **Tessellation**(可选) 曲面细分
+  - 细分图元
+3. **GeometryShader**(可选) 几何着色器
+  - 逐图元着色操作
+  - 添加删除图元
+4. **Projection**(可控) 投影
+5. **Clipping**(不可控) 裁剪
+  - 区域裁剪
+  - Camera视野范围
+6. **DNC**(不可控) 
+7. **Screen Mapping**(不可控) 屏幕映射
+8.  **Back-face Culling**(可配置) 背面剔除
+### 输出：屏幕二维坐标
 
 
 ## 2.2 步骤
