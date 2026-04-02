@@ -7,9 +7,7 @@ author:     kang
 header-img: img/post-bg-ocenwar.jpg
 catalog: true
 tags:
-    - Unreal
     - Rendering
-    - MultiThread
 ---
 
 <!-- [toc] -->
@@ -47,15 +45,21 @@ tags:
 
 ## 1. Summary
 
-| Three Threads              | Abbreviation | Responsibility                                                         | 职责                                                     |
-| -------------------------- | ------------ | ---------------------------------------------------------------------- | -------------------------------------------------------- |
-| **Game Thread** 主线程     | GT           | Gameplay logic, Actor tick, animation, physics, scene proxy creation   | 游戏逻辑、蓝图、物理、动画等高层逻辑处理                 |
-| **Render Thread** 渲染线程 | RT           | Visibility culling, draw command generation, render pass orchestration | 渲染命令生成，渲染资源管理，准备提交给 RHI 的任务        |
-| **RHI Thread** RHI线程     | RHIT         | Translate RHI commands to platform API (D3D12/Vulkan/Metal)            | 渲染硬件接口层，与底层图形 API 交互（DX12/Vulkan/Metal等 |
-| **GPU Thread** GPU线程     | GPUT         | 图形硬件实际执行渲染指令                                               | 图形硬件实际执行渲染指令                                 |
+### 1.1 线程种类
 
+| Three Threads              | Abbreviation | 职责                                                     | Responsibility                                                         | 入口                                               |
+| -------------------------- | ------------ | -------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------- |
+| **Game Thread** 主线程     | GT           | 游戏逻辑、蓝图、物理、动画等高层逻辑处理                 | Gameplay logic, Actor tick, animation, physics, scene proxy creation   | `UGameEngine::Tick()`                              |
+| **Render Thread** 渲染线程 | RT           | 渲染命令生成，渲染资源管理，准备提交给 RHI 的任务        | Visibility culling, draw command generation, render pass orchestration | `FRenderingThread::Run()` `ENQUEUE_RENDER_COMMAND` |
+| **RHI Thread** RHI线程     | RHIT         | 渲染硬件接口层，与底层图形 API 交互（DX12/Vulkan/Metal等 | Translate RHI commands to platform API (D3D12/Vulkan/Metal)            | `FRHICommandList`                                  |
+| **GPU Thread** GPU线程     | GPUT         | 图形硬件实际执行渲染指令                                 |                                                                        |                                                    |
 
-### 1.1 Thread Frame 
+- **主线程入口**：
+- **渲染线程入口**：
+- **渲染命令队列**： 宏
+- **RHI接口**：
+- 
+### 1.2 Thread Frame 
 
 ```
 ┌──────────────┐    ┌───────────────┐    ┌──────────────┐    ┌───────────┐
@@ -64,7 +68,7 @@ tags:
 └──────────────┘    └───────────────┘    └──────────────┘    └───────────┘
 ```
 
-### 1.2 Data Flow
+### 1.3 Data Flow
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -87,6 +91,66 @@ tags:
 │  → GPU submission                                       │
 └─────────────────────────────────────────────────────────┘
 ```
+
+### 1.4 **线程对应关系**
+
+| Game Thread         | 描述                                             | Renderer Thread      | 描述                                                        |
+| ------------------- | ------------------------------------------------ | -------------------- | ----------------------------------------------------------- |
+| UWorld              | 一组可以相互交互的Actor和组件的集合              | FScene               | UWorld在渲染模块的代表                                      |
+| FSceneView          | FScene内的单个视图 FScene允许有多个view          | FViewInfo            | view在渲染器的内部代表                                      |
+| ULocalPlayer        | 每个ULocalPlayer拥有一个FSceneViewState实例      | FSceneViewState      | 有关view的渲染器私有信息                                    |
+| ULightComponent     | 光源组件 所有光源类型的父类                      | FLightSceneProxy     | 渲染线程代表 <br> 镜像了ULightComponent在渲染线程的状态     |
+|                     |                                                  | FLightSceneInfo      | 渲染器内部状态 光源组件在渲染线程的映射关系                 |
+| UPrimitiveComponent | 图元组件，可渲染物体父类 CPU层裁剪的最小粒度单位 | FPrimitiveSceneProxy | 渲染线程代表 <br> 镜像了UPrimitiveComponent在渲染线程的状态 |
+|                     |                                                  | FPrimitiveSceneInfo  | 渲染器内部状态                                              |
+| UMaterialInterface  | 游戏线程代表                                     | FMaterialRenderProxy | 渲染线程代表 <br> 镜像了UMaterialInterface在渲染线程的状态  |
+
+#### 1.4.1 FPrimitiveSceneProxy
+
+> Bridge between GT (`UPrimitiveComponent`) and RT (`FScene`)
+
+| GT (Game Thread)         | RT (Render Thread)              |
+| ------------------------ | ------------------------------- |
+| `UStaticMeshComponent`   | `FStaticMeshSceneProxy`         |
+| `USkeletalMeshComponent` | `FSkeletalMeshSceneProxy`       |
+| `ULandscapeComponent`    | `FLandscapeComponentSceneProxy` |
+
+```cpp
+// Lifecycle
+// 1. GT creates proxy
+FPrimitiveSceneProxy* Proxy = Component->CreateSceneProxy();
+
+// 2. GT enqueues "add to scene" command
+ENQUEUE_RENDER_COMMAND(AddPrimitive)(
+    [Scene, Proxy](FRHICommandListImmediate& RHICmdList)
+    {
+        Scene->AddPrimitive(Proxy);
+    }
+);
+
+// 3. RT owns proxy lifetime after this point
+// 4. GT enqueues "remove" when component is destroyed
+```
+
+### 1.5 **线程对应关系**
+
+| 从               | 到                    |                                               |
+| ---------------- | --------------------- | --------------------------------------------- |
+| FSceneRenderer   | FMeshElementCollector | 一一对应,每个FSceneRenderer拥有一个收集器     |
+| FMeshBatch       | FMeshDrawCommand      | FBasePassMeshProcessor::BuildMeshDrawCommands |
+| FMeshDrawCommand | FMeshPassProcessor    | 每个Pass都对应了一个FMeshPassProcess          |
+| FMeshDrawCommand | RHICommandList        |                                               |
+
+### 1.6 Data Flow
+
+1. **划分粒度**
+   - 线性划分：ParallelFor
+   - 递归划分：快速排序,将连续数据按照某种规则划分成若干份，每一份又可继续划分成更细粒度，直到某种规则停止划分
+2. **竞争条件**
+   - 原子操作、临界区、读写锁、内核对象、信号量、互斥体、栅栏、屏障、事件
+3. **并行**
+   - 数据并行：MMX指令、SIMD技术、Compute着色器等
+   - 任务并行：文件加载、音频处理、网络接收、物理模拟
 
 ## 2. Game Thread (GT) 游戏线程
 
@@ -162,19 +226,21 @@ ENQUEUE_RENDER_COMMAND(UpdateTransform)(
 > RenderingThread.h声明了全部对外的接口
 > 多线程处理在DX11驱动程序：渲染线程（生产者）、驱动程序线程（消费者）
 
-### 流程
-1. 输入
-   - Process render commands from GT's command queue
-2. 处理
-   - 抽象的图形API调用
-   - **Visibility & Culling**: Frustum culling, occlusion culling
-   - **Draw Policy Matching**: Sort and batch draw calls
-3. 输出
-   - Generate **FRHICommandList** (platform-independent GPU commands) 生成渲染指令和渲染逻辑的独立线程
-   - Manage render targets, passes (BasePass, LightingPass, PostProcess)
+1. **输入**
+- Process render commands from GT's command queue
+2. **处理**
+- 抽象的图形API调用
+- **Visibility & Culling**: Frustum culling, occlusion culling
+- **Draw Policy Matching**: Sort and batch draw calls
+3. **输出**
+- Generate **FRHICommandList** (platform-independent GPU commands) 生成渲染指令和渲染逻辑的独立线程
+- Manage render targets, passes (BasePass, LightingPass, PostProcess)
 
-### ENQUEUE_RENDER_COMMAND
+### 3.1 ENQUEUE_RENDER_COMMAND
+
 > 向渲染线程入队渲染指令, Type指明了渲染操作的名字
+> GT → RT communication. Enqueues a lambda to be executed on the Render Thread.
+
 ```c++
 ENQUEUE_RENDER_COMMAND(FAddLightCommand)(
 [Scene, LightSceneInfo](FRHICommandListImmediate& RHICmdList)
@@ -186,34 +252,145 @@ ENQUEUE_RENDER_COMMAND(FAddLightCommand)(
 ```
 
 ```cpp
-// RT main loop (simplified)
-void FRenderingThread::Run()
-{
-    while (!bExit)
+// Macro definition (simplified)
+#define ENQUEUE_RENDER_COMMAND(CommandName) \
+    struct CommandName##_Command { \
+        static void Execute(FRHICommandListImmediate& RHICmdList, ...); \
+    };
+
+// Usage: GT enqueues work for RT
+ENQUEUE_RENDER_COMMAND(MyCommand)(
+    [CapturedData](FRHICommandListImmediate& RHICmdList)
     {
-        // Process all queued render commands from GT
-        FTaskGraphInterface::Get().ProcessThreadUntilIdle(ENamedThreads::GetRenderThread());
-        
-        // Execute scene rendering
-        RenderViewFamily_RenderThread(...);
+        // This runs on Render Thread
+        DoSomethingOnRT(CapturedData);
+    }
+);
+```
+
+**Important rules:**
+- Captured data must be **thread-safe** (copy or shared_ptr)
+- Never capture raw pointers to GT objects that may be destroyed
+- Use `FPrimitiveSceneProxy` as RT-safe representation
+
+### 3.2 **多线程** ProcessThreadUntilRequestReturn
+
+```cpp
+/** The rendering thread main loop */
+void RenderingThreadMain( FEvent* TaskGraphBoundSyncEvent )
+{
+    ENamedThreads::Type RenderThread = ENamedThreads::Type(ENamedThreads::ActualRenderingThread);
+    ENamedThreads::SetRenderThread(RenderThread);
+    FTaskGraphInterface::Get().AttachToThread(RenderThread);
+
+    virtual void FTaskGraphInterface::Get().ProcessThreadUntilRequestReturn(RenderThread) final override {
+        void Thread(CurrentThread).ProcessTasksUntilQuit(QueueIndex){
+            void ProcessTasksNamedThread() {
+                while (!Queue(QueueIndex).QuitForReturn) {
+                    FBaseGraphTask* Task = Queue(QueueIndex).StallQueue.Pop(0, bStallQueueAllowStall);
+                    void Task->Execute(NewTasks, ENamedThreads::Type(ThreadId | (QueueIndex << ENamedThreads::QueueIndexShift))) {
+                        void ExecuteTask(NewTasks, CurrentThread){
+                            void Task.DoTask(CurrentThread, Subsequents){
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    ENamedThreads::SetRenderThread(ENamedThreads::GameThread);
+}
+```
+
+### 3.3 **非多线程**ProcessThreadUntilIdle
+```c++
+// 未开启单独的渲染线程，会在游戏线程执行渲染指令
+void FlushRenderingCommands(bool bFlushDeferredDeletes)
+{
+    if (!GIsThreadedRendering
+        && !FTaskGraphInterface::Get().IsThreadProcessingTasks(ENamedThreads::GameThread)
+        && !FTaskGraphInterface::Get().IsThreadProcessingTasks(ENamedThreads::GameThread_Local))
+    {
+        FTaskGraphInterface::Get().ProcessThreadUntilIdle(ENamedThreads::GameThread);
+        FTaskGraphInterface::Get().ProcessThreadUntilIdle(ENamedThreads::GameThread_Local);
     }
 }
 ```
 
-## 1.3 RHI Thread
+## 4. RHI Thread
 
 - Translates `FRHICommandList` to native API calls
+  - RHI线程作为后端（backtend）会执行和转换渲染线程的Command List成为指定图形API的调用（称为Graphical Command），并提交到GPU执行
+  - 转换渲染指令到指定图形API，创建、上传渲染资源到GPU
 - D3D12: `ID3D12CommandList`, Vulkan: `VkCommandBuffer`
 - Handles GPU resource creation, state management
 - Can be disabled (`r.RHICmdBypass=1`), merging into RT
+- StartRenderingThread：创建RHIThread
+- RHICommandList: 向RHI线程入队
 
-```cpp
+```c++
 // RHI thread translates abstract commands
 void FD3D12CommandContext::RHIDrawIndexedPrimitive(...)
 {
     // Translate to D3D12
     CommandList->DrawIndexedInstanced(IndexCount, InstanceCount, ...);
 }
+```
+
+### 4.1 FRHICommandList
+
+- 渲染线程如向RHI线程入队任务
+- 所有的RHI指令都是预先声明并实现好的，目前存在的RHI渲染指令类型达到近百种
+
+**1. 渲染指令类型**
+
+```c++
+FRHICOMMAND_MACRO(FRHICommandUpdateGeometryCacheBuffer)
+FRHICOMMAND_MACRO(FRHICommandCopyTexture)
+FRHICOMMAND_MACRO(FRHISubmitFrameToEncoder)
+FRHICOMMAND_MACRO(FRHICommandBeginRenderPass)
+FRHICOMMAND_MACRO(FRHICommandBeginScene)
+```
+
+**2. FRHICOMMAND_MACRO**
+
+```c++
+// Engine\Source\Runtime\RHI\Public\RHICommandList.h
+
+// RHI命令父类
+struct FRHICommandBase
+{
+    FRHICommandBase* Next = nullptr; // 指向下一条RHI命令.
+    // 执行RHI命令并销毁.
+    virtual void ExecuteAndDestruct(FRHICommandListBase& CmdList, FRHICommandListDebugContext& DebugContext) = 0;
+};
+
+// RHI命令结构体
+template<typename TCmd, typename NameType = FUnnamedRhiCommand>
+struct FRHICommand : public FRHICommandBase
+{
+    (......)
+
+    void ExecuteAndDestruct(FRHICommandListBase& CmdList, FRHICommandListDebugContext& Context) override final
+    {
+        (......)
+        
+        TCmd *ThisCmd = static_cast<TCmd*>(this);
+
+        ThisCmd->Execute(CmdList);
+        ThisCmd->~TCmd();
+    }
+};
+
+// 向RHI线程发送RHI命令的宏.
+#define FRHICOMMAND_MACRO(CommandName)                                \
+struct PREPROCESSOR_JOIN(CommandName##String, __LINE__)                \
+{                                                                    \
+    static const TCHAR* TStr() { return TEXT(#CommandName); }        \
+};                                                                    \
+struct CommandName final : public FRHICommand<CommandName, PREPROCESSOR_JOIN(CommandName##String, __LINE__)>
 ```
 
 ---
@@ -256,66 +433,11 @@ Fence.Wait();  // blocks GT until RT processes all commands before fence
 FlushRenderingCommands();
 ```
 
-
-
 ---
 
 # 三. Key Mechanisms
 
-## 3.1 ENQUEUE_RENDER_COMMAND
-
-> GT → RT communication. Enqueues a lambda to be executed on the Render Thread.
-
-```cpp
-// Macro definition (simplified)
-#define ENQUEUE_RENDER_COMMAND(CommandName) \
-    struct CommandName##_Command { \
-        static void Execute(FRHICommandListImmediate& RHICmdList, ...); \
-    };
-
-// Usage: GT enqueues work for RT
-ENQUEUE_RENDER_COMMAND(MyCommand)(
-    [CapturedData](FRHICommandListImmediate& RHICmdList)
-    {
-        // This runs on Render Thread
-        DoSomethingOnRT(CapturedData);
-    }
-);
-```
-
-**Important rules:**
-- Captured data must be **thread-safe** (copy or shared_ptr)
-- Never capture raw pointers to GT objects that may be destroyed
-- Use `FPrimitiveSceneProxy` as RT-safe representation
-
-## 3.2 FPrimitiveSceneProxy
-
-> Bridge between GT (`UPrimitiveComponent`) and RT (`FScene`)
-
-| GT (Game Thread)         | RT (Render Thread)              |
-| ------------------------ | ------------------------------- |
-| `UStaticMeshComponent`   | `FStaticMeshSceneProxy`         |
-| `USkeletalMeshComponent` | `FSkeletalMeshSceneProxy`       |
-| `ULandscapeComponent`    | `FLandscapeComponentSceneProxy` |
-
-```cpp
-// Lifecycle
-// 1. GT creates proxy
-FPrimitiveSceneProxy* Proxy = Component->CreateSceneProxy();
-
-// 2. GT enqueues "add to scene" command
-ENQUEUE_RENDER_COMMAND(AddPrimitive)(
-    [Scene, Proxy](FRHICommandListImmediate& RHICmdList)
-    {
-        Scene->AddPrimitive(Proxy);
-    }
-);
-
-// 3. RT owns proxy lifetime after this point
-// 4. GT enqueues "remove" when component is destroyed
-```
-
-## 3.3 Parallel Command List Generation
+## 3.1 Parallel Command List Generation
 
 > UE4/5 can generate draw commands in parallel using TaskGraph workers.
 
@@ -350,7 +472,7 @@ ParallelFor(NumBatches,
 RHICmdList.QueueParallelAsyncCommandListSubmit(ParallelCmdLists);
 ```
 
-## 3.4 TaskGraph System
+## 3.2 TaskGraph System
 
 > UE's task-based parallelism framework, used extensively in rendering.
 
