@@ -34,3 +34,5 @@ Temporary Items
 # debug file
 _site
 Gemfile.lock
+
+_posts/*.html
