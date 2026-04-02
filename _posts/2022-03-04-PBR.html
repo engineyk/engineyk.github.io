@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>2022-03-04-PBR.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<!-- [toc] -->
+<h1 id="center-pbr-center"><center> PBR </center></h1>
+<!--
+[1. 概念](#概念)
+[1.1 基于微平面模型](#粗糙度)
+[1.1 能量守恒](#粗糙度)
+[2. Cook-Torrance](#Cook-Torrance)
+[2.1 法线分布函数NDF(D)](#法线分布函数NDF（D）)
+[2.2 遮挡（G）](#遮挡（G）)
+[2.3 菲涅尔（F）](#菲涅尔（F）)
+[4. DualSpecularGGX](#DualSpecularGGX)
+[5. BRDF2](#BRDF2)
+[6. BRDF3](#BRDF3)
+[7. 光照实现](#光照实现)
+[Roughness](#Roughness)
+[镜面反射](#镜面反射)
+[反射](#反射)
+[F0](#F0)
+-->
+<h1 id="1-%E6%A6%82%E5%BF%B5">1. 概念</h1>
+<h2 id="11-%E5%BE%AE%E5%B9%B3%E9%9D%A2microfacet">1.1 微平面（Microfacet）</h2>
+<ul>
+<li>
+<p><strong>光线的反射</strong>
+<img src="https://res.cloudinary.com/dyjxpjxro/image/upload/v1775053988/PBF-反射_hghnq7.png" alt="Logo" width="225" height="148"></p>
+<ul>
+<li>镜面反射光(<span style="color:#F3F300">黄线</span>): 直接从表面反射出去，不进入物体内部。</li>
+<li>漫反射光(<span style="color:red">红线</span>): 折射的光和颗粒碰撞后，从物体表面射出的光。</li>
+<li>金属(Metallic)材质会立即吸收所有折射光，故而金属只有镜面反射，而没有折射光引起的漫反射。</li>
+</ul>
+<pre class="hljs"><code><div><span class="hljs-type">float</span> kS = <span class="hljs-built_in">calculateSpecularComponent</span>(...); <span class="hljs-comment">// 反射/镜面部分</span>
+<span class="hljs-type">float</span> kD = <span class="hljs-number">1.0</span> - kS;                        <span class="hljs-comment">// 折射/漫反射部分</span>
+</div></code></pre>
+</li>
+<li>
+<p><strong>粗糙物体光线反射</strong></p>
+<ul>
+<li>基于粗糙度，计算出H的方向与微平面平均取向方向一致的概率。
+<img src="https://res.cloudinary.com/dyjxpjxro/image/upload/v1775053988/粗糙度反射_lua3gg.png" alt="alt text"></li>
+<li>左边<strong>粗糙</strong>反射的光线更<strong>杂乱</strong></li>
+<li>右边<strong>光滑</strong>反射的光线更<strong>平齐</strong></li>
+</ul>
+<p><strong>粗糙度从0.1~1.0的变化图</strong>
+<img src="https://res.cloudinary.com/dyjxpjxro/image/upload/v1775053988/粗糙度变化_lvovi1.png" alt="alt text"></p>
+<ul>
+<li>粗糙度越小，镜面反射越亮范围越小；</li>
+<li>粗糙度越大，镜面反射越弱</li>
+</ul>
+</li>
+</ul>
+<p>$$
+h = \frac{l+v}{\lVert l+v \rVert}
+$$</p>
+<ul>
+<li><strong>半角向量</strong>
+半角向量 h = (\frac{l+v)}{||l+v||})</li>
+</ul>
+<pre class="hljs"><code><div>vec3 lightDir = <span class="hljs-built_in">normalize</span>(lightPos - wPos);
+vec3 viewDir  = <span class="hljs-built_in">normalize</span>(viewPos - wPos);
+vec3 halfDir  = <span class="hljs-built_in">normalize</span>(lightDir + viewDir);
+</div></code></pre>
+<p><img src="https://res.cloudinary.com/dyjxpjxro/image/upload/v1775053988/半角方向_um854b.png" alt="半角方向"></p>
+<h2 id="12-%E8%83%BD%E9%87%8F%E5%AE%88%E6%81%92">1.2 能量守恒</h2>
+<ul>
+<li>入射光的总能量 &lt; 出射光的总能量</li>
+<li>最终颜色 = 漫反射 + 镜面反射 + GI &lt;= 1</li>
+<li>光能传播过程中的能量守衡体现在三个方面。
+<ul>
+<li>
+<p>一个对象反射出来的光照信息，不可能超过它接受到的信息。也就是说，全反射是一个物体的极限。</p>
+</li>
+<li>
+<p>一个物体越光亮，那么它的颜色信息应该越少。（refection和diffuse是一个插值关系）</p>
+<pre class="hljs"><code><div>oneMinusReflectivity = <span class="hljs-number">1</span> - <span class="hljs-built_in">lerp</span>(dielectricSpec, <span class="hljs-number">0</span>, metallic)
+specColor = <span class="hljs-built_in">lerp</span>(dielectricSpec, albedo, metallic)
+diffColor = albedo * (oneMinusReflectivity)
+</div></code></pre>
+</li>
+<li>
+<p>一个物体越平滑，那么它的高亮点会越小，越亮。</p>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<p><span id="BRDF"></span></p>
+<h1 id="2-%E5%9F%BA%E4%BA%8E%E7%89%A9%E7%90%86%E7%9A%84brdfuse-a-physically-based-brdf">2. 基于物理的BRDF（Use a physically based BRDF)</h1>
+<p><strong>BRDF</strong>（Bidirectional Reflectance Distribution Function，双向反射分布函数）</p>
+<p>$$
+f(l, v) = \frac{dL_o(v)}{dE(l)}
+$$</p>
+<p>其中：</p>
+<ul>
+<li>( f(l, v) )：BRDF函数，表示从入射方向 ( l ) 到出射方向 ( v ) 的反射属性</li>
+<li>( dL_o(v) )：<strong>出射方向</strong> ( v ) 上的辐射亮度微分</li>
+<li>( dE(l) )：<strong>入射方向</strong> ( l ) 上的照度微分</li>
+</ul>
+<p>（1）概念理解</p>
+<ul>
+<li>入射光 l 照到物体表面上，反射光线为v，那么反射光的亮度（辐射率）和入射光的能量(辐照度)会成一个比例，而这个比例就是BDRF。</li>
+<li>可以理解为，在某一个特定的角度观看某个点时，各个方向的入射光对该点的最终光亮度产生的贡献比例，其实它就是一些零点几的小数。</li>
+</ul>
+<p>（2）为什么是辐射率和辐射度微分的比值，而不是辐射率和辐射率，或者辐照度和辐照度的微分比值？
+见参考资料的两种解释，比较好理解的是从数学角度来说，只有用Irradiance的微分，这个比值才会有意义，否则直接用出射光的dLo比上入射光的L，会趋于0，如果是dE，则是Li * cosθ * dw，也是趋于0，是有意义的。</p>
+<!--
+## 第二种解释
+从数学的角度出发，对于现实世界中的非光学平面，一束光线射到表面上后，被表面反射到各个方向，其中一个出射方向的光通量只是整个反射光通量极小的一部分。当出射方向立体角趋于0时，
+\[
+\lim_{\omega_o \to 0} \frac{dL_o}{L_i} = 0
+\]
+所以在实际计算中使用辐射率和辐照率比值是没有意义的。而如果分母改成表面上被收到的来自光源方向的微分分辐照度，我们知道
+\[
+dE = L_i(l) d\omega_i \cos\theta_i
+\]
+由于给入射辐射率乘了一个趋于零的微分立体角，\( dE \) 的值会小很多，此时
+\[
+\frac{dL_o}{dE}
+\]
+是有意义的，而不是0。
+-->
+<p>描述物体表面如何反射光线的方程
+表示了当给定一条入射光的时候，某一条特定的出射光线的性质是怎么样的。
+它的精确定义是<strong>出射光辐射率</strong>(Radiance)的微分和<strong>入射光辐照度</strong>(Irradiance)的微分之比。</p>
+<h2 id="21-%E5%85%AC%E5%BC%8F">2.1 公式</h2>
+<p>$$
+L_o(p, \omega_o) = \int_\Omega \left( k_d \frac{c}{\pi} + \frac{DFG}{4(\omega_o \cdot \mathbf{n})(\omega_i \cdot \mathbf{n})} \right) L_i(p, \omega_i) (\mathbf{n} \cdot \omega_i) d\omega_i
+$$</p>
+<ul>
+<li>左侧 (L_o(p, \omega_o))：表示在表面点 p 出射方向 ωₒ 的出射辐亮度。</li>
+<li>积分区域 (\Omega)：对所有可能的入射方向（单位半球）积分。</li>
+<li>(k_d \frac{c}{\pi})：表示朗伯漫反射模型，对应表面的漫反射部分。
+<ul>
+<li>kd： 为漫反射系数</li>
+<li>c：物体颜色Albedo</li>
+</ul>
+</li>
+<li>(\frac{DFG}{4(\omega_o \cdot \mathbf{n})(\omega_i \cdot \mathbf{n})})：Cook-Torrance模型描述的高光反射部分，DFG代表微面元分布、菲涅尔效应和几何遮蔽项的组合。</li>
+<li>(L_i(p, \omega_i))：(L_i(p, l))表示点 p 在入射方向 ωᵢ 上的辐入亮度。
+<ul>
+<li>环境光、全局光、由光照系统、材质BSDF、GI、自动计算，包括环境贴图、ShadowMap采样、反射探针等等</li>
+<li>(p)，空间点p</li>
+<li>(\omega_i)，点光源、环境光的出射幅亮度</li>
+</ul>
+</li>
+<li>((\mathbf{n} \cdot \omega_i))：((\mathbf{n} \cdot l))：法线与入射方向的夹角余弦，用于修正能量贡献。</li>
+<li>(d\omega_i)：对单位半球微分方向积分。
+<img src="https://res.cloudinary.com/dyjxpjxro/image/upload/v1775053988/灯光方向_gycrob.png" alt="alt text"></li>
+</ul>
+<p>$$
+f_r = k_d f_{lambert} + k_s f_{cook-torrance}
+$$</p>
+<ul>
+<li>
+<p>(k_s )：入射光被镜面反射比例</p>
+</li>
+<li>
+<p>(k_d )：入射光中被折射的比例</p>
+<pre class="hljs"><code><div><span class="hljs-type">float</span> kS = <span class="hljs-built_in">calculateSpecularComponent</span>(...); <span class="hljs-comment">// 反射/镜面部分</span>
+<span class="hljs-type">float</span> kD = <span class="hljs-number">1.0</span> - kS;                        <span class="hljs-comment">// 折射/漫反射部分</span>
+</div></code></pre>
+</li>
+<li>
+<p>(\omega_i )：入射光线lightDir</p>
+</li>
+<li>
+<p>(\omega_o )：出射光线viewDir</p>
+</li>
+<li>
+<p>(f_{lambert})：<strong>漫反射</strong> 伦勃朗漫反射（Lambertian Diffuse） (f_{lambert} = \frac{c}{\pi})</p>
+<ul>
+<li>(c)： Albedo、表面颜色、漫反射纹理</li>
+</ul>
+</li>
+<li>
+<p>(f_\text{cook-torrance})：<strong>镜面反射</strong> (f_\text{cook-torrance} = \frac{DFG}{4(\omega_o \cdot \mathbf{n})(\omega_i \cdot \mathbf{n})})</p>
+<ul>
+<li>(Cook-Torrance(\mathbf{v}, \mathbf{l}, \mathbf{n}) = \frac{D(\mathbf{h}) \cdot G(\mathbf{v}, \mathbf{l}, \mathbf{n}) \cdot F(\mathbf{v}, \mathbf{l}, \mathbf{n})}{4 \cdot (\mathbf{v} \cdot \mathbf{n}) \cdot (\mathbf{l} \cdot \mathbf{n})})</li>
+</ul>
+</li>
+</ul>
+<h2 id="22-unrealengine4-cook-torrance">2.2 UnrealEngine4 Cook-Torrance</h2>
+<p>$$
+Cook-Torrance(\mathbf{v}, \mathbf{l}, \mathbf{n}) = \frac{D(\mathbf{h}) \cdot F(\mathbf{v}, \mathbf{h}) \cdot G(\mathbf{v}, \mathbf{l}, \mathbf{n})}{4 \cdot (\mathbf{n} \cdot \mathbf{v}) \cdot (\mathbf{n} \cdot \mathbf{l})}
+$$</p>
+<ul>
+<li>D： Trowbridge-Reitz GGX</li>
+<li>F： Fresnel-Schlick近似法(Approximation)</li>
+<li>G： Smith's Schlick-GGX</li>
+</ul>
+<!--
+ /ˈtɔrəns/ /ˈspæroʊ/ (托兰斯 - 斯帕罗) 
+-->
+<table>
+<thead>
+<tr>
+<th>DFG</th>
+<th>翻译</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(D(\mathbf{n},\mathbf{h},\mathbf{a}))</td>
+<td>法线分布函数 (Normal Distribution Function，NDF)</td>
+<td>微表面的法线分布</td>
+</tr>
+<tr>
+<td>(F(\mathbf{v},\mathbf{h}))</td>
+<td>菲涅尔方程 (Fresnel equation)</td>
+<td>光线在表面的反射率</td>
+</tr>
+<tr>
+<td>(G(\mathbf{v},\mathbf{l},\mathbf{n}))</td>
+<td>几何遮挡函数 (Geometry function)</td>
+<td>微表面之间的遮挡和阴影</td>
+</tr>
+</tbody>
+</table>
+<pre class="hljs"><code><div><span class="hljs-function">float3 <span class="hljs-title">BRDF</span><span class="hljs-params">(float3 v, float3 l, float3 n, float3 f0, <span class="hljs-type">float</span> roughness)</span> </span>{
+    <span class="hljs-type">float</span> h  = <span class="hljs-built_in">normalize</span>(l + v); <span class="hljs-comment">// 光源和视角的中间</span>
+    <span class="hljs-type">float</span> nh  = <span class="hljs-built_in">max</span>(<span class="hljs-built_in">dot</span>(n, h), <span class="hljs-number">0.0</span>);
+    <span class="hljs-type">float</span> nl  = <span class="hljs-built_in">max</span>(<span class="hljs-built_in">dot</span>(n, v), <span class="hljs-number">0.0</span>);
+    <span class="hljs-comment">// 计算法线分布函数</span>
+    <span class="hljs-type">float</span> D = <span class="hljs-built_in">D_GGX</span>(n, h, roughness);
+    <span class="hljs-comment">// 计算菲涅尔函数</span>
+    float3 F = <span class="hljs-built_in">F_Schlick</span>(v, h, f0);
+    <span class="hljs-comment">// 计算几何遮挡函数</span>
+    <span class="hljs-type">float</span> G = <span class="hljs-built_in">G_SchlickGGX</span>(n, v, l, roughness);
+    <span class="hljs-comment">// 计算BRDF</span>
+    float3 brdf = (D * G * F) / (<span class="hljs-number">4.0</span> * nv * nl);
+    <span class="hljs-keyword">return</span> brdf;
+}
+</div></code></pre>
+<p><span id="法线分布函数NDF（D）"></span></p>
+<h3 id="221-%E6%B3%95%E7%BA%BF%E5%88%86%E5%B8%83%E5%87%BD%E6%95%B0-d-trowbridge-reitz-ggx">2.2.1 法线分布函数 (D) Trowbridge-Reitz GGX</h3>
+<p>$$
+D_{\text{GGX（Trowbridge-Reitz）}}(\mathbf{n}, \mathbf{h}, \mathbf{a}) = \frac{\alpha^2}{\pi \left((n*h)^2 (\alpha^2 - 1) + 1\right)^2}
+$$</p>
+<ul>
+<li>( \alpha )  是粗糙度参数，决定了表面的光泽度。
+<br><img src="https://res.cloudinary.com/dyjxpjxro/image/upload/v1775053988/NDF_rcdnfu.png" alt="Logo" width="232" height="56">
+<br>粗糙度改变高光分布，比较强的质感，缺乏立体感，缺乏遮挡V</li>
+<li>粗糙度低时，h取向在微平面集中在小的半径范围内</li>
+<li>粗糙度高时，h取向在方向随机</li>
+</ul>
+<pre class="hljs"><code><div><span class="hljs-comment">// Trowbridge-Reitz GGX</span>
+<span class="hljs-comment">// 粗糙的物体a=1：1</span>
+<span class="hljs-comment">// 光滑的物体a=0：无穷小</span>
+<span class="hljs-comment">// Epic GLSL</span>
+<span class="hljs-function"><span class="hljs-type">float</span> <span class="hljs-title">DistributionGGX</span><span class="hljs-params">(vec3 N, vec3 H, <span class="hljs-type">float</span> roughness)</span>
+</span>{
+    <span class="hljs-type">float</span> a   = roughness * roughness; <span class="hljs-comment">// a:粗糙度</span>
+    <span class="hljs-type">float</span> a2  = a * a;
+    <span class="hljs-type">float</span> nh  = <span class="hljs-built_in">max</span>(<span class="hljs-built_in">dot</span>(N, H), <span class="hljs-number">0.0</span>);
+    <span class="hljs-type">float</span> nh2 = nh*nh;
+    <span class="hljs-type">float</span> d = (nh2 * (a2 - <span class="hljs-number">1.0</span>) + <span class="hljs-number">1.0</span>);
+    <span class="hljs-keyword">return</span> a2 / (PI * d * d);
+}
+</div></code></pre>
+<pre class="hljs"><code><div><span class="hljs-comment">// GGX（Trowbridge-Reitz）</span>
+<span class="hljs-function"><span class="hljs-type">float</span> <span class="hljs-title">D_GGX</span><span class="hljs-params">(<span class="hljs-type">float</span> a2, <span class="hljs-type">float</span> nh)</span> <span class="hljs-comment">// a:粗糙度</span>
+</span>{
+  <span class="hljs-type">float</span> d = (nh * a2 - nh) * nh + <span class="hljs-number">1</span>;  <span class="hljs-comment">// 2 mad</span>
+  <span class="hljs-keyword">return</span> a2 / (PI * d * d);           <span class="hljs-comment">// 4 mul, 1 rcp</span>
+}
+</div></code></pre>
+<!--
+| 参数 | 描述       |
+| ---- | ---------- |
+| a    | 粗糙度     |
+| n    | 法线       |
+| h    | 光线与视角 |
+-->
+<!--
+###  GGX（教团1886的InverseGGX）
+
+- \( \alpha \)  是粗糙度参数，决定了表面的光泽度。
+- \( \theta_H \) 是半角向量 \(\mathbf{H}\) 与法线方向的夹角。
+- \( \cos \theta_H \) 是半角向量与法线方向的余弦值，通常通过点积计算得到
+- \(\mathbf{h}\) 是半角向量，计算公式为：
+$$
+\mathbf{h} = \frac{\mathbf{v} + \mathbf{l}}{\|\mathbf{v} + \mathbf{l}\|}
+$$
+$$
+NDF_Beckmann = \frac{1}{\pi \sigma^2} \exp\left(-\frac{\tan^2 \theta}{\sigma^2}\right)
+$$
+$$
+NDF_BlinnPhong = \frac{(n + 1)}{2 \pi} (\cos \theta)^n
+$$
+-->
+<!--
+------------------------
+<span id="F"></span>
+-->
+<p><span id="菲涅尔（F）"></span></p>
+<h3 id="222-%E8%8F%B2%E6%B6%85%E5%B0%94ffresnel-schlick%E8%BF%91%E4%BC%BC%E6%B3%95approximation">2.2.2 菲涅尔（F）Fresnel-Schlick近似法(Approximation)</h3>
+<ul>
+<li>不同角度有不同强度的反射光</li>
+<li>水的材质现象,材质表面对于光线的反射
+<ul>
+<li>N和V的角度</li>
+<li><strong>正交时</strong>当光线垂直入射的时候（沿着法线入射的时候）是最弱的，</li>
+<li><strong>非垂直</strong>而当光线与法线的夹角逐渐增大，则反射也会增强。</li>
+</ul>
+</li>
+<li>类似物理碰撞，如光线是子弹，如水是钢盔</li>
+<li>如果是正面，冲撞最大，直接穿透。</li>
+<li>如果是侧面，冲撞最小，会反弹。</li>
+<li>纯金属的反射率F0为其颜色，纯金属的颜色因为反射率不同造成</li>
+<li>非金属的反射率F0为其明暗，非金属的颜色因为不同波长的光的吸收率不同造成</li>
+</ul>
+<p>正交时,夹角为90°, 视线V和法线夹角为0时，h<em>v=1，代入公式，二项式为0，值为F0
+非垂直,夹角&lt;90°, 视线V和法线夹角为1时，h</em>v=0，代入公式，二项式为0，值为0</p>
+<p>$$
+FSchlick(h,v,F_0) = F_0 + (1 - F_0)(1 - (h*v)^5
+$$</p>
+<pre class="hljs"><code><div><span class="hljs-comment">// 菲涅尔 F（Schlick近似）</span>
+<span class="hljs-comment">// 纯金属F0为1, F0 + 0 * ..., 只计算F0</span>
+<span class="hljs-comment">// 非金属F0为0，0 + pow(1-vh, 5)，不计算F0，只有pow(vh, 5)</span>
+<span class="hljs-comment">// VdotH为0的时候反射最高，</span>
+<span class="hljs-comment">// vec3 F0 = mix(vec3(0.04), baseColor, metallic); // 非金属用0.04，金属用baseColor</span>
+
+<span class="hljs-function">float3 <span class="hljs-title">F_Schlick</span><span class="hljs-params">(float3 F0, <span class="hljs-type">float</span> vh)</span>
+</span>{
+    <span class="hljs-keyword">return</span> F0 + (<span class="hljs-number">1.0</span> - F0) * <span class="hljs-built_in">pow</span>(<span class="hljs-number">1.0</span> - vh, <span class="hljs-number">5.0</span>);
+}
+
+</div></code></pre>
+<!--
+// Schlick菲涅尔函数.
+float3 F_Schlick( float3 SpecularColor, float VoH )
+{
+  float Fc = Pow5( 1 - VoH );                    // 1 sub, 3 mul
+  return saturate( 50.0 * SpecularColor.g ) * Fc + (1 - Fc) * SpecularColor;
+}
+float3 F_Schlick(float3 SpecularColor, float VoH )
+{
+  float Fc = 1.0 - VoH;
+  Fc *= Fc;
+  Fc *= Fc;
+  return SpecularColor + (1.0 - SpecularColor) * Fc;
+}
+-->
+<ul>
+<li>(F_0) 反射率
+<ul>
+<li>纯水 F₀ ≈ 0.02</li>
+<li>塑料 F₀ ≈ 0.04</li>
+<li>铜 F₀ ≈ (0.95, 0.64, 0.54)</li>
+<li>金 F₀ ≈ (1.00, 0.71, 0.29)</li>
+</ul>
+</li>
+<li>(V) 视线</li>
+<li>(H) 视线与法线夹角</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Dot</th>
+<th>值域</th>
+<th>-</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&lt;0</td>
+<td>[-1~0]</td>
+<td>方向相反，夹角在90°到180°之间</td>
+</tr>
+<tr>
+<td>=0</td>
+<td>0</td>
+<td>正交，方向垂直为0, 夹角90°</td>
+</tr>
+<tr>
+<td>&gt;0</td>
+<td>[0~1]</td>
+<td>方向基本相同，夹角在0°到90°之间</td>
+</tr>
+</tbody>
+</table>
+<p><span id="遮挡（G）"></span></p>
+<h3 id="223-%E9%81%AE%E6%8C%A1gsmiths-schlick-ggx">2.2.3 遮挡（G）Smith's Schlick-GGX</h3>
+<blockquote>
+<p>GGX和Schlick-Beckmann组合而成的模拟函数Schlick-GGX
+Smith，考虑两个视角，实现方向和光线方向，使用GeometrySmith</p>
+</blockquote>
+<p>从几何学上统计相互遮蔽的概率，消耗光线能量。
+描述阴影的属性，当微平面粗糙时，微平面可能会挡住其他微平面，从而减少反射的光线。</p>
+<p>$$
+{SchlickGGX}(\mathbf{N}, \mathbf{v}, k) = \frac{\mathbf{n} \cdot \mathbf{v}}{(\mathbf{n} \cdot \mathbf{v})(1 - k) + k}
+$$</p>
+<!--
+- n 是表面法线。
+- v 是方向向量（可以是观察方向或光线方向）。
+$$
+k = \left(\frac{\alpha + 1}{8}\right)^2
+$$
+-->
+<p><strong>系数K</strong></p>
+<ul>
+<li>如果用 Disney/Unreal 公式，则 ( k \in [0.125, 0.25] )
+$$
+k = \frac{(a + 1)^2}{8}
+$$</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>材质</th>
+<th>a</th>
+<th>k</th>
+<th>G</th>
+<th>结果值域</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>光滑物体</td>
+<td>0</td>
+<td>值小：0.125（1/8）</td>
+<td>1 （n<em>v / n</em>v））</td>
+<td>无遮挡，接近0</td>
+</tr>
+<tr>
+<td>粗糙物体</td>
+<td>1</td>
+<td>值大：0.5（4/8）</td>
+<td>nv （n*v / 1））</td>
+<td>有遮挡，接近1</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>
+<p>α : 粗糙度参数，用于控制遮挡效果。</p>
+</li>
+<li>
+<p>若 k ∈ [0, 1]，则 G ≈ [1, n*v]</p>
+<ul>
+<li>光滑物体，k值小，G值为1，无遮挡</li>
+<li>粗糙物体，k值大，G值为n*v，有遮挡</li>
+</ul>
+</li>
+<li>
+<p>若简化实现，则 ( k \in [0, 0.5] )
+$$
+k = \frac{a^2}{2}
+$$</p>
+</li>
+</ul>
+<blockquote>
+<p>同时考虑两个视角，视线方向（几何遮挡）跟光线方向（几何阴影）</p>
+</blockquote>
+<p>$$
+G(n, v, l, k) = G_{sub}(n, v, k) G_{sub}(n, l, k)
+$$</p>
+<pre class="hljs"><code><div><span class="hljs-function"><span class="hljs-type">float</span> <span class="hljs-title">GeometrySmith</span><span class="hljs-params">(vec3 N, vec3 V, vec3 L, <span class="hljs-type">float</span> roughness)</span> </span>{
+  <span class="hljs-type">float</span> nv = <span class="hljs-built_in">max</span>(<span class="hljs-built_in">dot</span>(N, V), <span class="hljs-number">0.0</span>);
+  <span class="hljs-type">float</span> nl = <span class="hljs-built_in">max</span>(<span class="hljs-built_in">dot</span>(N, L), <span class="hljs-number">0.0</span>);
+  <span class="hljs-type">float</span> ggx1 = <span class="hljs-built_in">SchlickGGX</span>(nl, roughness); <span class="hljs-comment">// 几何阴影</span>
+  <span class="hljs-type">float</span> ggx2 = <span class="hljs-built_in">SchlickGGX</span>(nv, roughness); <span class="hljs-comment">// 几何遮挡</span>
+  <span class="hljs-keyword">return</span> ggx1 * ggx2;
+}
+
+<span class="hljs-function"><span class="hljs-type">float</span> <span class="hljs-title">SchlickGGX</span><span class="hljs-params">(<span class="hljs-type">float</span> nv, <span class="hljs-type">float</span> roughness)</span> </span>{
+  <span class="hljs-type">float</span> r = roughness + <span class="hljs-number">1.0</span>;
+  <span class="hljs-type">float</span> k = (r * r) / <span class="hljs-number">8.0</span>;
+  <span class="hljs-type">float</span> denom = nv * (<span class="hljs-number">1.0</span> - k) + k;
+  <span class="hljs-keyword">return</span> nv / denom;
+}
+</div></code></pre>
+<hr>
+<p><span id="DualSpecularGGX"></span></p>
+<h1 id="3-dualspecularggx">3. DualSpecularGGX</h1>
+<pre class="hljs"><code><div><span class="hljs-function">vec3 <span class="hljs-title">DualSpecularGGX</span><span class="hljs-params">(<span class="hljs-type">float</span> NoL, <span class="hljs-type">float</span> NoV, <span class="hljs-type">float</span> NoH, <span class="hljs-type">float</span> LoH, <span class="hljs-type">float</span> AverageRoughness, vec3 SpecularColor)</span>
+</span>{
+  <span class="hljs-comment">//AverageRoughness = GBuffer.Roughness</span>
+  <span class="hljs-type">float</span> AverageToRoughness0 = DUAL_SPECULAR.x * <span class="hljs-number">2.0</span>;
+  <span class="hljs-type">float</span> AverageToRoughness1 = DUAL_SPECULAR.y * <span class="hljs-number">2.0</span>;
+
+  <span class="hljs-type">float</span> Lobe0Roughness = <span class="hljs-built_in">max</span>(<span class="hljs-built_in">clamp</span>((AverageRoughness * AverageToRoughness0), <span class="hljs-number">0.0</span>, <span class="hljs-number">1.0</span>), <span class="hljs-number">0.02</span>);
+  <span class="hljs-type">float</span> Lobe1Roughness = <span class="hljs-built_in">clamp</span>((AverageRoughness * AverageToRoughness1), <span class="hljs-number">0.0</span>, <span class="hljs-number">1.0</span>);
+
+  <span class="hljs-type">float</span> AverageAlpha2 = <span class="hljs-built_in">pow</span>((AverageRoughness), <span class="hljs-number">2.0</span>);
+  <span class="hljs-type">float</span> Lobe0Alpha2 = <span class="hljs-built_in">pow</span>((Lobe0Roughness), <span class="hljs-number">2.0</span>);
+  <span class="hljs-type">float</span> Lobe1Alpha2 = <span class="hljs-built_in">pow</span>((Lobe1Roughness), <span class="hljs-number">2.0</span>);
+
+  <span class="hljs-comment">// Generalized microfacet specular</span>
+  <span class="hljs-type">float</span> D = <span class="hljs-built_in">mix</span>(<span class="hljs-built_in">GGXTermNotNormalized</span>(NoH, Lobe0Alpha2), <span class="hljs-built_in">GGXTermNotNormalized</span>(NoH, Lobe1Alpha2), DUAL_SPECULAR.z);
+  <span class="hljs-type">float</span> Vis = <span class="hljs-built_in">SmithJointGGXVisibilityTerm</span>(NoL, NoV, AverageAlpha2); <span class="hljs-comment">// Average visibility well approximates using two separate ones (one per lobe).</span>
+  vec3 F = <span class="hljs-built_in">FresnelTerm</span>(SpecularColor, LoH);
+  <span class="hljs-keyword">return</span> (D * Vis) * F;
+}
+
+<span class="hljs-function"><span class="hljs-type">float</span> <span class="hljs-title">GGXTermNotNormalized</span> <span class="hljs-params">(<span class="hljs-type">float</span> NdotH, <span class="hljs-type">float</span> roughness)</span>
+</span>{
+    <span class="hljs-type">float</span> a2 = roughness * roughness;
+    <span class="hljs-type">float</span> d = (NdotH * a2 - NdotH) * NdotH + <span class="hljs-number">1.0</span>; <span class="hljs-comment">// 2 mad</span>
+    <span class="hljs-keyword">return</span> <span class="hljs-built_in">min</span>(a2 / (d * d + <span class="hljs-number">1e-5</span>), <span class="hljs-number">128.0</span>);
+    <span class="hljs-comment">// This function is not intended to be running on Mobile,</span>
+    <span class="hljs-comment">// therefore epsilon is smaller than what can be represented by half</span>
+}
+<span class="hljs-function"><span class="hljs-type">float</span> <span class="hljs-title">SmithJointGGXVisibilityTerm</span><span class="hljs-params">(<span class="hljs-type">float</span> nl, <span class="hljs-type">float</span> nv, <span class="hljs-type">float</span> roughness)</span>
+</span>{
+    <span class="hljs-type">float</span> a = roughness;
+    <span class="hljs-type">float</span> lambdaV = nl * (nv * (<span class="hljs-number">1.0</span> - a) + a);
+    <span class="hljs-type">float</span> lambdaL = nv * (nl * (<span class="hljs-number">1.0</span> - a) + a);
+    <span class="hljs-keyword">return</span> <span class="hljs-built_in">min</span>(<span class="hljs-number">0.5</span> / (lambdaV + lambdaL + <span class="hljs-number">1e-5</span>), <span class="hljs-number">128.0</span>);
+}
+
+<span class="hljs-function">vec3 <span class="hljs-title">FresnelTerm</span> <span class="hljs-params">(vec3 F0, <span class="hljs-type">float</span> cosA)</span>
+</span>{
+    <span class="hljs-type">float</span> t = <span class="hljs-built_in">Pow5</span> (<span class="hljs-number">1.0</span> - cosA);   <span class="hljs-comment">// ala Schlick interpoliation</span>
+    <span class="hljs-keyword">return</span> F0 + (<span class="hljs-number">1</span>-F0) * t;
+}
+</div></code></pre>
+<hr>
+<p><span id="BRDF2"></span></p>
+<h1 id="4-brdf2">4. BRDF2</h1>
+<pre class="hljs"><code><div><span class="hljs-comment">// Based on Minimalist CookTorrance BRDF</span>
+<span class="hljs-comment">// Implementation is slightly different from original derivation: http://www.thetenthplanet.de/archives/255</span>
+<span class="hljs-comment">//</span>
+<span class="hljs-comment">// * NDF (depending on UNITY_BRDF_GGX):</span>
+<span class="hljs-comment">//  a) BlinnPhong</span>
+<span class="hljs-comment">//  b) [Modified] GGX</span>
+<span class="hljs-comment">// * Modified Kelemen and Szirmay-​Kalos for Visibility term</span>
+<span class="hljs-comment">// * Fresnel approximated with 1/LdotH</span>
+</div></code></pre>
+<hr>
+<p><span id="BRDF3"></span></p>
+<h1 id="5-brdf3">5. BRDF3</h1>
+<p><strong>使用LookUp Texture</strong></p>
+<p><strong>BRDF LUT（查找表）</strong></p>
+<blockquote>
+<p>X 轴通常为粗糙度（roughness）
+Y 轴为 N·V（法线与视线夹角）。</p>
+</blockquote>
+<pre class="hljs"><code><div><span class="hljs-comment">// Google Filamen</span>
+<span class="hljs-comment">// 以 Filament brdf.cpp 为例</span>
+<span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> y = <span class="hljs-number">0</span>; y &lt; size; ++y) {       <span class="hljs-comment">// Y = NdotV</span>
+    <span class="hljs-type">float</span> NdotV = <span class="hljs-built_in">float</span>(y + <span class="hljs-number">0.5</span>) / size;
+    <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> x = <span class="hljs-number">0</span>; x &lt; size; ++x) {   <span class="hljs-comment">// X = roughness</span>
+        <span class="hljs-type">float</span> roughness = <span class="hljs-built_in">float</span>(x + <span class="hljs-number">0.5</span>) / size;
+
+        <span class="hljs-comment">// 进行多次蒙特卡洛采样</span>
+        float2 brdf = <span class="hljs-built_in">integrateBRDF</span>(NdotV, roughness, sampleCount);
+        <span class="hljs-comment">// 存储到贴图，RG通道</span>
+        data[y * size + x] = brdf;
+    }
+}
+</div></code></pre>
+<pre class="hljs"><code><div><span class="hljs-comment">// Old school, not microfacet based Modified Normalized Blinn-Phong BRDF</span>
+<span class="hljs-comment">// Implementation uses Lookup texture for performance</span>
+<span class="hljs-comment">//</span>
+<span class="hljs-comment">// * Normalized BlinnPhong in RDF form</span>
+<span class="hljs-comment">// * Implicit Visibility term</span>
+<span class="hljs-comment">// * No Fresnel term</span>
+<span class="hljs-comment">//</span>
+<span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> specular is too weak in Linear rendering mode</span>
+</div></code></pre>
+<hr>
+<p><span id="光照实现"></span></p>
+<h1 id="6-%E5%85%89%E7%85%A7%E5%AE%9E%E7%8E%B0">6. 光照实现</h1>
+<pre class="hljs"><code><div>
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> 
+</span>{
+  vec3 Lo = <span class="hljs-built_in">vec3</span>(<span class="hljs-number">0.0</span>);
+  <span class="hljs-keyword">for</span>(<span class="hljs-type">int</span> i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">4</span>; ++i) 
+  {
+    <span class="hljs-comment">// wi</span>
+    vec3 L = <span class="hljs-built_in">normalize</span>(lightPositions[i] - WorldPos);
+    vec3 H = <span class="hljs-built_in">normalize</span>(V + L);
+
+    <span class="hljs-type">float</span> distance    = <span class="hljs-built_in">length</span>(lightPositions[i] - WorldPos);
+    <span class="hljs-comment">// 计算光源在点fragPos的衰减系数</span>
+    <span class="hljs-type">float</span> attenuation = <span class="hljs-number">1.0</span> / (distance * distance);    <span class="hljs-comment">// 衰减</span>
+    vec3 radiance     = lightColors[i] * attenuation;   <span class="hljs-comment">// 辐射</span>
+
+    vec3 F0 = <span class="hljs-built_in">vec3</span>(<span class="hljs-number">0.04</span>); 
+    F0 = <span class="hljs-built_in">mix</span>(F0, albedo, metallic);
+    vec3 F = <span class="hljs-built_in">fresnelSchlick</span>(<span class="hljs-built_in">max</span>(<span class="hljs-built_in">dot</span>(H, V), <span class="hljs-number">0.0</span>), F0);
+
+    <span class="hljs-type">float</span> NDF = <span class="hljs-built_in">DistributionGGX</span>(N, H, roughness);       
+    <span class="hljs-type">float</span> G   = <span class="hljs-built_in">GeometrySmith</span>(N, V, L, roughness);
+
+    vec3 numerator    = NDF * G * F;
+    <span class="hljs-type">float</span> denominator = <span class="hljs-number">4.0</span> * <span class="hljs-built_in">max</span>(<span class="hljs-built_in">dot</span>(N, V), <span class="hljs-number">0.0</span>) * <span class="hljs-built_in">max</span>(<span class="hljs-built_in">dot</span>(N, L), <span class="hljs-number">0.0</span>); 
+    vec3 specular     = numerator / <span class="hljs-built_in">max</span>(denominator, <span class="hljs-number">0.001</span>);  <span class="hljs-comment">// 为了防止除0情况而特意加上的。</span>
+
+    vec3 kS = F;
+    vec3 kD = <span class="hljs-built_in">vec3</span>(<span class="hljs-number">1.0</span>) - kS;
+      
+    kD *= <span class="hljs-number">1.0</span> - metallic; <span class="hljs-comment">// 由于金属表面不折射光，没有漫反射颜色，通过归零kD来实现这个规则</span>
+
+
+    <span class="hljs-type">const</span> <span class="hljs-type">float</span> PI = <span class="hljs-number">3.14159265359</span>;
+
+    <span class="hljs-type">float</span> NdotL = <span class="hljs-built_in">max</span>(<span class="hljs-built_in">dot</span>(N, L), <span class="hljs-number">0.0</span>);    
+    <span class="hljs-comment">// float cosTheta    = max(dot(N, Wi), 0.0);</span>
+    <span class="hljs-comment">// Lo出射辐射度（Radiosity）  反射方程在半球Ω的积分∫的结果  </span>
+    Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+  }
+  vec3 ambient = <span class="hljs-built_in">vec3</span>(<span class="hljs-number">0.03</span>) * albedo * ao;
+  vec3 color = ambient + Lo;  
+}
+
+<span class="hljs-function">vec3 <span class="hljs-title">fresnelSchlick</span><span class="hljs-params">(<span class="hljs-type">float</span> cosTheta, vec3 F0)</span>
+</span>{
+  <span class="hljs-keyword">return</span> F0 + (<span class="hljs-number">1.0</span> - F0) * <span class="hljs-built_in">pow</span>(<span class="hljs-number">1.0</span> - cosTheta, <span class="hljs-number">5.0</span>);
+} 
+
+<span class="hljs-function"><span class="hljs-type">float</span> <span class="hljs-title">DistributionGGX</span><span class="hljs-params">(vec3 N, vec3 H, <span class="hljs-type">float</span> roughness)</span>
+</span>{
+  <span class="hljs-type">float</span> a      = roughness*roughness;
+  <span class="hljs-type">float</span> a2     = a*a;
+  <span class="hljs-type">float</span> NdotH  = <span class="hljs-built_in">max</span>(<span class="hljs-built_in">dot</span>(N, H), <span class="hljs-number">0.0</span>);
+  <span class="hljs-type">float</span> NdotH2 = NdotH*NdotH;
+
+  <span class="hljs-type">float</span> num   = a2;
+  <span class="hljs-type">float</span> denom = (NdotH2 * (a2 - <span class="hljs-number">1.0</span>) + <span class="hljs-number">1.0</span>);
+  denom = PI * denom * denom;
+
+  <span class="hljs-keyword">return</span> num / denom;
+}
+
+<span class="hljs-function"><span class="hljs-type">float</span> <span class="hljs-title">GeometrySchlickGGX</span><span class="hljs-params">(<span class="hljs-type">float</span> NdotV, <span class="hljs-type">float</span> roughness)</span>
+</span>{
+  <span class="hljs-type">float</span> r = (roughness + <span class="hljs-number">1.0</span>);
+  <span class="hljs-type">float</span> k = (r*r) / <span class="hljs-number">8.0</span>;
+
+  <span class="hljs-type">float</span> num   = NdotV;
+  <span class="hljs-type">float</span> denom = NdotV * (<span class="hljs-number">1.0</span> - k) + k;
+
+  <span class="hljs-keyword">return</span> num / denom;
+}
+
+<span class="hljs-function"><span class="hljs-type">float</span> <span class="hljs-title">GeometrySmith</span><span class="hljs-params">(vec3 N, vec3 V, vec3 L, <span class="hljs-type">float</span> roughness)</span>
+</span>{
+  <span class="hljs-type">float</span> NdotV = <span class="hljs-built_in">max</span>(<span class="hljs-built_in">dot</span>(N, V), <span class="hljs-number">0.0</span>);
+  <span class="hljs-type">float</span> NdotL = <span class="hljs-built_in">max</span>(<span class="hljs-built_in">dot</span>(N, L), <span class="hljs-number">0.0</span>);
+  <span class="hljs-type">float</span> ggx2  = <span class="hljs-built_in">GeometrySchlickGGX</span>(NdotV, roughness);
+  <span class="hljs-type">float</span> ggx1  = <span class="hljs-built_in">GeometrySchlickGGX</span>(NdotL, roughness);
+
+  <span class="hljs-keyword">return</span> ggx1 * ggx2;
+}
+</div></code></pre>
+<!--
+
+# 7. 优化
+GGX伦勃朗光照计算
+Schlick的F0近似法
+Smith几何遮蔽函数混合
+迪斯尼原则的金属度线性插值
+-->
+</body>
+</html>

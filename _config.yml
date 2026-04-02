@@ -46,8 +46,9 @@ markdown: kramdown
 highlighter: rouge
 kramdown:
   input: GFM                            # use Github Flavored Markdown !important
-
-
+  # math_engine: mathjax 
+  math_engine: null
+  
 # 评论系统
 # Disqus（https://disqus.com/）
 # disqus_username: engineyk
