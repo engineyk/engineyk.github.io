@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      渲染管线
-subtitle:   渲染管线
+title:      Render Pipeline
+subtitle:   渲染管线、应用阶段、几何阶段、光栅化、逐像素阶段
 date:       2022-3-4
 author:     kang
 header-img: img/post-bg-ocenwar.jpg
