@@ -151,7 +151,7 @@ ENQUEUE_RENDER_COMMAND(AddPrimitive)(
 | FMeshDrawCommand | FMeshPassProcessor    | 每个Pass都对应了一个FMeshPassProcess          |
 | FMeshDrawCommand | RHICommandList        |                                               |
 
-### 1.6 Data Flow
+### 1.6 划分粒度
 
 1. **划分粒度**
    - 线性划分：ParallelFor
@@ -161,6 +161,60 @@ ENQUEUE_RENDER_COMMAND(AddPrimitive)(
 3. **并行**
    - 数据并行：MMX指令、SIMD技术、Compute着色器等
    - 任务并行：文件加载、音频处理、网络接收、物理模拟
+
+### 1.7 多线程并行
+
+**数据并行**
+- 不同的线程携带不同的数据执行相同的逻辑
+- 数据并行的应用是MMX指令、SIMD技术、Compute着色器等
+
+**任务并行**
+- 游戏引擎经常将文件加载、音频处理、网络接收乃至物理模拟都放到单独的线程，以便它们可以并行地执行不同的任务
+- 任务并行是不同的线程执行不同的逻辑，数据可以相同，也可以不同
+
+### 1.8 划分粒度
+**线性划分**
+并行化的std::for_each和UE里的ParallelFor
+
+```c++
+inline void ParallelFor(int32 Num, TFunctionRef<void(int32)> Body, bool bForceSingleThread, bool bPumpRenderingThread=false);
+基于TaskGraph机制实现的
+ParallelFor(AddPrimitiveBatches.Num(), // 数量
+        [&](int32 Index) //回调函数, Index返回索引
+        {
+            if (!AddPrimitiveBatches[Index]->IsPendingKill())
+            {
+                Scene->AddPrimitive(AddPrimitiveBatches[Index]);
+            }
+        },
+        !FApp::ShouldUseThreadingForPerformance() // 是否多线程处理
+    );
+```
+
+**递归划分**
+递归划分法是将连续数据按照某种规则划分成若干份，每一份又可继续划分成更细粒度，直到某种规则停止划分。常用于快速排序。
+
+**递归划分法**
+将一个大框架内的逻辑划分成若干个子任务，它们之间通常保持独立，也可以有一定依赖，每个任务派发到一个线程执行，这就意味着真正意义上的线程独立，每个线程只需要关注自己所要做的事情即可。
+https://www.gdcvault.com/play/1012321/Task-based-Multithreading-How-to
+
+### SIMD
+SIMD（Single Instruction, Multiple Data）是一种数据并行的计算方式，可以一次性处理多个数据元素。为了最大化SIMD的效率，常见做法是将同类数据**紧密连续地排列（pack）**在内存中，使其对齐到SIMD指令要求的边界（如16字节、32字节等）。
+
+**虚函数的额外内存开销**
+
+一旦类包含虚函数（即有虚表指针vptr），每个对象实例中都会多出一个vptr字段（通常为4~8字节）。这会导致：
+
+- **数据不再紧密连续**，对象内部多了vptr指针，破坏了内存对齐
+- **不同子类对象大小不一**，难以用SIMD对齐“打包”处理
+```cpp
+struct Base {
+    virtual void foo();
+    float x, y, z, w;
+};
+Base arr[1024]; // 每个对象多了vptr，内存布局中间插入指针，影响SIMD加载
+```
+
 
 ## 2. Game Thread (GT) 游戏线程
 
