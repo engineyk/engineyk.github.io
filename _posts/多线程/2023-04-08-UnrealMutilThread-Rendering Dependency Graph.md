@@ -44,7 +44,7 @@ tags:
                             |       → Barrier Batching
                             |       → Async Compute Scheduling
                             |       → Parallel Command Recording
-3. Optimization Strategies  |
+3. Compiile                 |
                             |   → Dev
                             |   → Compiile
 4. Implementation           |
@@ -176,11 +176,36 @@ The framework automatically handles:
 | r.RDG.VerboseCSVStats         | 控制RDG的CSV分析统计的详细程度。0-为图形执行生成一个CSV配置文件，1-为图形执行的每个阶段生成一个CSV文件。             |
 
 
+
+## Three-Phase Pipeline
+
+The RDG operates in three distinct phases per frame:
+
+### 1. Setup (Declaration)
+- Passes declare their resource inputs/outputs  声明资源
+- Resources are created as **virtual handles**  虚拟句柄
+- No GPU work is performed                      GPU运行
+- Runs on CPU, can be parallelized              并行处理
+
+### 2. Compile (Analysis)
+- Build dependency graph from declared inputs/outputs
+- Calculate resource lifetimes
+- Cull unreferenced passes
+- Determine execution order (topological sort)
+- Generate synchronization barriers
+- Perform memory aliasing analysis
+
+### 3. Execute (Recording & Submission)
+- Allocate actual GPU resources
+- Record command buffers
+- Insert barriers and transitions
+- Submit to GPU queues
+
 # 二. RDGEngine
 
 ## 2.1 Builder
 
-### Builder Pattern
+### 1. Builder Pattern
 **The graph is constructed using a builder pattern:**
 
 ```c++
@@ -219,7 +244,7 @@ public:
 
 ## 2.2 Pass System
 
-### Pass Types
+### 1. Pass Types
 
 ```cpp
 enum class ERDGPassFlags : uint32_t {
@@ -233,7 +258,6 @@ enum class ERDGPassFlags : uint32_t {
 };
 ```
 
-**Pass types**:
 - **Raster Pass**: Traditional draw calls with render targets
 - **Compute Pass**: Dispatch compute shaders
 - **Copy/Transfer Pass**: Resource copies, uploads, readbacks
@@ -251,7 +275,7 @@ struct RenderPass {
 };
 ```
 
-### Connecting Passes
+### 2. Connecting Passes
 
 Passes are connected implicitly through shared resource references:
 
@@ -297,7 +321,7 @@ GraphBuilder.AddPass(
     });
 ```
 
-### Pass Declaration Example
+### 3. Pass Declaration Example
 
 ```cpp
 void AddGBufferPass(RDGBuilder& builder, const ViewInfo& view) {
@@ -340,7 +364,7 @@ void AddGBufferPass(RDGBuilder& builder, const ViewInfo& view) {
 ```
 
 
-### Pass Execution Lambda
+### 4. Pass Execution Lambda
 
 The execution lambda captures the actual GPU work:
 
@@ -365,7 +389,7 @@ builder.AddPass(
 ```
 
 
-### Parameter Struct Pattern (UE5 Style)
+### 5. Parameter Struct Pattern (UE5 Style)
 Unreal Engine 5 uses a macro-based parameter declaration:
 
 ```cpp
@@ -385,7 +409,33 @@ END_SHADER_PARAMETER_STRUCT()
 
 ## 2.3 Resouces Management 资源管理
 
-### Transient Resource Pool
+Resources in RDG are **virtual handles** until execution:
+
+```cpp
+struct RDGResource {
+    std::string name;
+    ResourceDesc desc;          // Texture/Buffer description
+    bool isExternal;            // Imported or transient
+    bool isTransient;           // Managed by the graph
+    ResourceLifetime lifetime;  // First use → last use
+};
+```
+
+Resource categories:
+- **Transient Resources**: Created and destroyed within a single frame
+- **External/Imported Resources**: Persist across frames (e.g., swap chain, history buffers)
+- **Extracted Resources**: Transient resources promoted to persist beyond the frame
+Resources are accessed through typed views:
+
+| View Type                     | Description                       |
+| ----------------------------- | --------------------------------- |
+| `SRV` (Shader Resource View)  | Read-only texture/buffer access   |
+| `UAV` (Unordered Access View) | Read-write access in compute      |
+| `RTV` (Render Target View)    | Write as color attachment         |
+| `DSV` (Depth Stencil View)    | Write as depth/stencil attachment |
+| `CBV` (Constant Buffer View)  | Uniform/constant buffer access    |
+
+### 1. Transient Resource Pool
 
 Transient resources are allocated from a pool and reused across frames:
 
@@ -411,7 +461,7 @@ private:
 };
 ```
 
-### Resource Lifetime Tracking
+### 2. Resource Lifetime Tracking
 
 ```
 Frame Timeline:
@@ -430,7 +480,7 @@ Resource lifetimes are computed as:
 - **Allocation Point**: Just before first use
 - **Deallocation Point**: Just after last use
 
-### Memory Aliasing
+### 3. Memory Aliasing
 
 Non-overlapping resources can share the same physical memory:
 
@@ -451,7 +501,7 @@ Aliasing algorithm:
 2. For each resource, find a memory slot where no lifetime overlap exists
 3. Use placed/aliased resource APIs (D3D12 Placed Resources, Vulkan Memory Aliasing)
 
-### External vs Transient Resources
+### 4. External vs Transient Resources
 
 ```cpp
 // External: imported from outside the graph, persists across frames
@@ -470,11 +520,11 @@ RDGTextureRef historyBuffer = builder.CreateTexture(desc, "HistoryBuffer");
 builder.QueueExtraction(historyBuffer, &savedHistoryBuffer);
 ```
 
-
 ---
 
 ## 2.4 Dependency Resolution
-### Implicit Dependencies
+
+### 1. Implicit Dependencies
 
 Dependencies are inferred from resource usage:
 
@@ -483,7 +533,7 @@ Pass A writes ResourceX → Pass B reads ResourceX
 ∴ Pass B depends on Pass A (B must execute after A)
 ```
 
-### Dependency Graph Construction Algorithm
+### 2. Dependency Graph Construction Algorithm
 
 ```python
 def build_dependency_graph(passes):
@@ -506,7 +556,7 @@ def build_dependency_graph(passes):
     return graph
 ```
 
-### Topological Sort for Execution Order
+### 3. Topological Sort for Execution Order
 
 ```python
 def topological_sort(graph):
@@ -530,7 +580,7 @@ def topological_sort(graph):
     return execution_order
 ```
 
-### Dead Pass Culling
+### 4. Dead Pass Culling
 
 Passes whose outputs are never consumed can be removed:
 
@@ -566,7 +616,7 @@ def cull_unused_passes(graph, required_outputs):
 
 ## 2.5 Execution & Scheduling
 
-### Barrier Generation
+### 1. Barrier Generation 生成
 
 Automatic barrier insertion between passes:
 
@@ -604,7 +654,7 @@ void GenerateBarriers(const ExecutionOrder& order) {
 }
 ```
 
-### Barrier Batching
+### 2. Barrier Batching 合批
 
 Barriers are batched for efficiency:
 
@@ -623,7 +673,7 @@ After batching:
   DrawCall()
 ```
 
-### Async Compute Scheduling
+### 3. Async Compute Scheduling
 
 ```
 Graphics Queue:  [Shadow] ──→ [GBuffer] ──→ [Lighting] ──→ [PostProcess]
@@ -659,7 +709,7 @@ void ScheduleAsyncCompute(ExecutionPlan& plan) {
 }
 ```
 
-### Parallel Command Recording
+### 4. Parallel Command Recording
 
 The graph enables parallel command buffer recording:
 
@@ -688,16 +738,11 @@ void ExecuteGraph(const ExecutionPlan& plan) {
 }
 ```
 
----
 
 
+### 2..6 Directed Acyclic Graph (DAG)
 
-
-
-
-## Directed Acyclic Graph (DAG)
-
-The rendering dependency graph is fundamentally a DAG: RDG本事是一个有向无环图
+The rendering dependency graph is fundamentally a DAG: RDG 是一个有向无环图
 
 ```
 [Shadow Map Pass] ──→ [GBuffer Pass] ──→ [Lighting Pass] ──→ [Post Process] ──→ [UI Overlay]
@@ -709,162 +754,3 @@ The rendering dependency graph is fundamentally a DAG: RDG本事是一个有向�
 - **No cycles allowed** — a pass cannot depend on its own output
 - **Multiple roots** — the graph can have multiple entry points
 - **Single or multiple sinks** — typically ends at the final present/swap chain
-
-## Resources
-
-Resources in RDG are **virtual handles** until execution:
-
-```cpp
-struct RDGResource {
-    std::string name;
-    ResourceDesc desc;          // Texture/Buffer description
-    bool isExternal;            // Imported or transient
-    bool isTransient;           // Managed by the graph
-    ResourceLifetime lifetime;  // First use → last use
-};
-```
-
-Resource categories:
-- **Transient Resources**: Created and destroyed within a single frame
-- **External/Imported Resources**: Persist across frames (e.g., swap chain, history buffers)
-- **Extracted Resources**: Transient resources promoted to persist beyond the frame
-
-## 2.4 Resource Views
-
-Resources are accessed through typed views:
-
-| View Type                     | Description                       |
-| ----------------------------- | --------------------------------- |
-| `SRV` (Shader Resource View)  | Read-only texture/buffer access   |
-| `UAV` (Unordered Access View) | Read-write access in compute      |
-| `RTV` (Render Target View)    | Write as color attachment         |
-| `DSV` (Depth Stencil View)    | Write as depth/stencil attachment |
-| `CBV` (Constant Buffer View)  | Uniform/constant buffer access    |
-
-
-## Builder
-
-
-### 4.1 Builder Pattern
-
-The graph is constructed using a builder pattern:
-
-```cpp
-class RDGBuilder {
-public:
-    // Create a new transient texture
-    RDGTextureRef CreateTexture(const FRDGTextureDesc& desc, const char* name);
-    
-    // Create a new transient buffer
-    RDGBufferRef CreateBuffer(const FRDGBufferDesc& desc, const char* name);
-    
-    // Import an external resource
-    RDGTextureRef RegisterExternalTexture(FRHITexture* texture, const char* name);
-    
-    // Add a render pass
-    template<typename ParameterStruct>
-    void AddPass(
-        const char* name,
-        const ParameterStruct* parameters,
-        ERDGPassFlags flags,
-        std::function<void(const ParameterStruct&, FRHICommandList&)> executeLambda
-    );
-};
-```
-
-### 4.2 Pass Declaration Example
-
-```cpp
-void AddGBufferPass(RDGBuilder& builder, const ViewInfo& view) {
-    // Declare outputs
-    RDGTextureRef albedoRT = builder.CreateTexture(
-        FRDGTextureDesc::Create2D(width, height, PF_R8G8B8A8_UNORM),
-        "GBuffer_Albedo"
-    );
-    
-    RDGTextureRef normalRT = builder.CreateTexture(
-        FRDGTextureDesc::Create2D(width, height, PF_R16G16B16A16_FLOAT),
-        "GBuffer_Normal"
-    );
-    
-    RDGTextureRef depthRT = builder.CreateTexture(
-        FRDGTextureDesc::Create2D(width, height, PF_D32_FLOAT),
-        "GBuffer_Depth"
-    );
-    
-    // Declare pass parameters
-    auto* params = builder.AllocParameters<FGBufferPassParams>();
-    params->albedoTarget = builder.CreateRTV(albedoRT);
-    params->normalTarget = builder.CreateRTV(normalRT);
-    params->depthTarget  = builder.CreateDSV(depthRT);
-    
-    // Add the pass
-    builder.AddPass(
-        "GBufferPass",
-        params,
-        ERDGPassFlags::Raster,
-        [view](const FGBufferPassParams& params, FRHICommandList& cmdList) {
-            // Actual rendering commands
-            cmdList.SetRenderTargets(params.albedoTarget, params.normalTarget, params.depthTarget);
-            for (const auto& mesh : view.visibleMeshes) {
-                cmdList.DrawIndexed(mesh);
-            }
-        }
-    );
-}
-```
-
-### 4.3 Connecting Passes
-
-Passes are connected implicitly through shared resource references:
-
-```cpp
-void SetupFrame(RDGBuilder& builder) {
-    // Pass 1: GBuffer
-    auto [albedo, normal, depth] = AddGBufferPass(builder, view);
-    
-    // Pass 2: SSAO (reads depth, writes SSAO texture)
-    auto ssaoTexture = AddSSAOPass(builder, depth);
-    
-    // Pass 3: Lighting (reads GBuffer + SSAO)
-    auto sceneColor = AddLightingPass(builder, albedo, normal, depth, ssaoTexture);
-    
-    // Pass 4: Post Processing
-    auto finalColor = AddPostProcessPass(builder, sceneColor);
-    
-    // Pass 5: Present
-    AddPresentPass(builder, finalColor, swapChainTarget);
-}
-```
-
----
-
-
-## RDG Engine
-
-### 3.2 Three-Phase Pipeline
-
-The RDG operates in three distinct phases per frame:
-
-#### Phase 1: Setup (Declaration)
-- Passes declare their resource inputs/outputs
-- Resources are created as virtual handles
-- No GPU work is performed
-- Runs on CPU, can be parallelized
-
-#### Phase 2: Compile (Analysis)
-- Build dependency graph from declared inputs/outputs
-- Calculate resource lifetimes
-- Cull unreferenced passes
-- Determine execution order (topological sort)
-- Generate synchronization barriers
-- Perform memory aliasing analysis
-
-#### Phase 3: Execute (Recording & Submission)
-- Allocate actual GPU resources
-- Record command buffers
-- Insert barriers and transitions
-- Submit to GPU queues
-
-
----
