@@ -507,7 +507,7 @@ def build_dependency_graph(passes):
     return graph
 ```
 
-### 7.3 Topological Sort for Execution Order
+### Topological Sort for Execution Order
 
 ```python
 def topological_sort(graph):
@@ -531,7 +531,7 @@ def topological_sort(graph):
     return execution_order
 ```
 
-### 7.4 Dead Pass Culling
+### Dead Pass Culling
 
 Passes whose outputs are never consumed can be removed:
 
@@ -565,8 +565,136 @@ def cull_unused_passes(graph, required_outputs):
 
 
 
+## Execution & Scheduling
 
-----
+### Barrier Generation
+
+Automatic barrier insertion between passes:
+
+```cpp
+struct ResourceBarrier {
+    GPUResource* resource;
+    ResourceState before;   // e.g., RENDER_TARGET
+    ResourceState after;    // e.g., SHADER_RESOURCE
+    uint32_t subresource;   // Mip/slice level
+};
+
+void GenerateBarriers(const ExecutionOrder& order) {
+    std::unordered_map<RDGResource*, ResourceState> currentStates;
+    
+    for (auto& pass : order) {
+        std::vector<ResourceBarrier> barriers;
+        
+        for (auto& [resource, requiredState] : pass.resourceAccesses) {
+            ResourceState currentState = currentStates[resource];
+            
+            if (currentState != requiredState) {
+                barriers.push_back({
+                    resource->GetGPUResource(),
+                    currentState,
+                    requiredState
+                });
+                currentStates[resource] = requiredState;
+            }
+        }
+        
+        if (!barriers.empty()) {
+            pass.preBarriers = std::move(barriers);
+        }
+    }
+}
+```
+
+### Barrier Batching
+
+Barriers are batched for efficiency:
+
+```
+Before batching:
+  Barrier(ResA: SRV → UAV)
+  Dispatch()
+  Barrier(ResB: RTV → SRV)
+  Barrier(ResC: RTV → SRV)
+  DrawCall()
+
+After batching:
+  Barrier(ResA: SRV → UAV)
+  Dispatch()
+  BatchedBarrier(ResB: RTV → SRV, ResC: RTV → SRV)  // Single API call
+  DrawCall()
+```
+
+### Async Compute Scheduling
+
+```
+Graphics Queue:  [Shadow] ──→ [GBuffer] ──→ [Lighting] ──→ [PostProcess]
+                                  │              ↑
+                                  │    ┌─────────┘
+                                  ▼    │
+Async Compute:              [SSAO Compute] ──→ [SSAO Blur]
+                            (fence signal)     (fence wait)
+```
+
+Async compute passes are scheduled on a separate queue with fence synchronization:
+
+```cpp
+void ScheduleAsyncCompute(ExecutionPlan& plan) {
+    for (auto& pass : plan.passes) {
+        if (pass.flags & ERDGPassFlags::AsyncCompute) {
+            // Find the latest graphics dependency
+            auto graphicsDep = FindLatestGraphicsDependency(pass);
+            
+            // Insert fence after graphics dependency
+            plan.InsertFence(graphicsDep, FenceType::GraphicsToCompute);
+            
+            // Find the earliest graphics consumer
+            auto graphicsConsumer = FindEarliestGraphicsConsumer(pass);
+            
+            // Insert wait before graphics consumer
+            plan.InsertWait(graphicsConsumer, FenceType::ComputeToGraphics);
+            
+            // Move pass to async compute queue
+            plan.MoveToAsyncQueue(pass);
+        }
+    }
+}
+```
+
+### Parallel Command Recording
+
+The graph enables parallel command buffer recording:
+
+```cpp
+void ExecuteGraph(const ExecutionPlan& plan) {
+    // Group passes into independent batches
+    auto batches = plan.GetParallelBatches();
+    
+    std::vector<CommandBuffer*> commandBuffers;
+    
+    // Record each batch in parallel
+    parallel_for(batches, [&](const PassBatch& batch) {
+        CommandBuffer* cmd = AllocateSecondaryCommandBuffer();
+        
+        for (auto& pass : batch.passes) {
+            InsertBarriers(cmd, pass.preBarriers);
+            pass.Execute(cmd);
+        }
+        
+        commandBuffers.push_back(cmd);
+    });
+    
+    // Submit all command buffers
+    primaryCommandBuffer->ExecuteSecondary(commandBuffers);
+    queue->Submit(primaryCommandBuffer);
+}
+```
+
+---
+
+
+
+
+
 
 ## Directed Acyclic Graph (DAG)
 
@@ -739,286 +867,5 @@ The RDG operates in three distinct phases per frame:
 - Insert barriers and transitions
 - Submit to GPU queues
 
-
-## Resource Management 资源管理
-
-
----
-
-
-## Pass System
-
-### 6.1 Pass Types
-
-```cpp
-enum class ERDGPassFlags : uint32_t {
-    None          = 0,
-    Raster        = 1 << 0,   // Uses render targets, draw calls
-    Compute       = 1 << 1,   // Uses compute dispatch
-    AsyncCompute  = 1 << 2,   // Runs on async compute queue
-    Copy          = 1 << 3,   // Transfer operations
-    NeverCull     = 1 << 4,   // Cannot be culled (e.g., readback)
-    SkipBarriers  = 1 << 5,   // Manual barrier management
-};
-```
-
-### 6.2 Parameter Struct Pattern (UE5 Style)
-
-Unreal Engine 5 uses a macro-based parameter declaration:
-
-```cpp
-BEGIN_SHADER_PARAMETER_STRUCT(FDeferredLightingParams, )
-    SHADER_PARAMETER_RDG_TEXTURE(Texture2D, GBufferA)        // SRV input
-    SHADER_PARAMETER_RDG_TEXTURE(Texture2D, GBufferB)        // SRV input
-    SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SceneDepth)      // SRV input
-    SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SSAOTexture)     // SRV input
-    SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, SceneColor) // UAV output
-    SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
-    RENDER_TARGET_BINDING_SLOTS()                             // RTV slots
-END_SHADER_PARAMETER_STRUCT()
-```
-
-### 6.3 Pass Execution Lambda
-
-The execution lambda captures the actual GPU work:
-
-```cpp
-builder.AddPass(
-    RDG_EVENT_NAME("DeferredLighting"),
-    passParameters,
-    ERDGPassFlags::Compute,
-    [this, viewInfo, lightData](FRHIComputeCommandList& cmdList) {
-        // Set compute shader
-        cmdList.SetComputeShader(deferredLightingCS);
-        
-        // Bind parameters (auto-bound from parameter struct)
-        SetShaderParameters(cmdList, deferredLightingCS, *passParameters);
-        
-        // Dispatch
-        uint32_t groupsX = DivideAndRoundUp(viewInfo.width, 8);
-        uint32_t groupsY = DivideAndRoundUp(viewInfo.height, 8);
-        cmdList.Dispatch(groupsX, groupsY, 1);
-    }
-);
-```
-
----
-
-
-## Dependency Resolution
-
-### 7.1 Implicit Dependencies
-
-Dependencies are inferred from resource usage:
-
-```
-Pass A writes ResourceX → Pass B reads ResourceX
-∴ Pass B depends on Pass A (B must execute after A)
-```
-
-### 7.2 Dependency Graph Construction Algorithm
-
-```python
-def build_dependency_graph(passes):
-    graph = DirectedGraph()
-    resource_writers = {}  # resource -> last writer pass
-    
-    for pass_node in passes:
-        graph.add_node(pass_node)
-        
-        # For each input resource, add edge from writer to this pass
-        for resource in pass_node.inputs:
-            if resource in resource_writers:
-                writer = resource_writers[resource]
-                graph.add_edge(writer, pass_node)  # writer -> reader
-        
-        # Track this pass as the writer for its outputs
-        for resource in pass_node.outputs:
-            resource_writers[resource] = pass_node
-    
-    return graph
-```
-
-### 7.3 Topological Sort for Execution Order
-
-```python
-def topological_sort(graph):
-    in_degree = {node: 0 for node in graph.nodes}
-    for u, v in graph.edges:
-        in_degree[v] += 1
-    
-    queue = [node for node in graph.nodes if in_degree[node] == 0]
-    execution_order = []
-    
-    while queue:
-        node = queue.pop(0)  # Can use priority for optimization
-        execution_order.append(node)
-        
-        for neighbor in graph.successors(node):
-            in_degree[neighbor] -= 1
-            if in_degree[neighbor] == 0:
-                queue.append(neighbor)
-    
-    assert len(execution_order) == len(graph.nodes), "Cycle detected!"
-    return execution_order
-```
-
-### 7.4 Dead Pass Culling
-
-Passes whose outputs are never consumed can be removed:
-
-```python
-def cull_unused_passes(graph, required_outputs):
-    # Start from required outputs (e.g., present pass)
-    visited = set()
-    stack = [pass for pass in graph.nodes if pass.has_side_effects 
-             or any(out in required_outputs for out in pass.outputs)]
-    
-    # Backward traversal: mark all passes that contribute to required outputs
-    while stack:
-        current = stack.pop()
-        if current in visited:
-            continue
-        visited.add(current)
-        
-        # Add all predecessors (passes that produce our inputs)
-        for predecessor in graph.predecessors(current):
-            stack.append(predecessor)
-    
-    # Remove unvisited passes
-    culled = [p for p in graph.nodes if p not in visited]
-    for pass_node in culled:
-        graph.remove_node(pass_node)
-    
-    return culled
-```
-
----
-
-
-
-## Execution & Scheduling
-
-### 8.1 Barrier Generation
-
-Automatic barrier insertion between passes:
-
-```cpp
-struct ResourceBarrier {
-    GPUResource* resource;
-    ResourceState before;   // e.g., RENDER_TARGET
-    ResourceState after;    // e.g., SHADER_RESOURCE
-    uint32_t subresource;   // Mip/slice level
-};
-
-void GenerateBarriers(const ExecutionOrder& order) {
-    std::unordered_map<RDGResource*, ResourceState> currentStates;
-    
-    for (auto& pass : order) {
-        std::vector<ResourceBarrier> barriers;
-        
-        for (auto& [resource, requiredState] : pass.resourceAccesses) {
-            ResourceState currentState = currentStates[resource];
-            
-            if (currentState != requiredState) {
-                barriers.push_back({
-                    resource->GetGPUResource(),
-                    currentState,
-                    requiredState
-                });
-                currentStates[resource] = requiredState;
-            }
-        }
-        
-        if (!barriers.empty()) {
-            pass.preBarriers = std::move(barriers);
-        }
-    }
-}
-```
-
-### 8.2 Barrier Batching
-
-Barriers are batched for efficiency:
-
-```
-Before batching:
-  Barrier(ResA: SRV → UAV)
-  Dispatch()
-  Barrier(ResB: RTV → SRV)
-  Barrier(ResC: RTV → SRV)
-  DrawCall()
-
-After batching:
-  Barrier(ResA: SRV → UAV)
-  Dispatch()
-  BatchedBarrier(ResB: RTV → SRV, ResC: RTV → SRV)  // Single API call
-  DrawCall()
-```
-
-### 8.3 Async Compute Scheduling
-
-```
-Graphics Queue:  [Shadow] ──→ [GBuffer] ──→ [Lighting] ──→ [PostProcess]
-                                  │              ↑
-                                  │    ┌─────────┘
-                                  ▼    │
-Async Compute:              [SSAO Compute] ──→ [SSAO Blur]
-                            (fence signal)     (fence wait)
-```
-
-Async compute passes are scheduled on a separate queue with fence synchronization:
-
-```cpp
-void ScheduleAsyncCompute(ExecutionPlan& plan) {
-    for (auto& pass : plan.passes) {
-        if (pass.flags & ERDGPassFlags::AsyncCompute) {
-            // Find the latest graphics dependency
-            auto graphicsDep = FindLatestGraphicsDependency(pass);
-            
-            // Insert fence after graphics dependency
-            plan.InsertFence(graphicsDep, FenceType::GraphicsToCompute);
-            
-            // Find the earliest graphics consumer
-            auto graphicsConsumer = FindEarliestGraphicsConsumer(pass);
-            
-            // Insert wait before graphics consumer
-            plan.InsertWait(graphicsConsumer, FenceType::ComputeToGraphics);
-            
-            // Move pass to async compute queue
-            plan.MoveToAsyncQueue(pass);
-        }
-    }
-}
-```
-
-### 8.4 Parallel Command Recording
-
-The graph enables parallel command buffer recording:
-
-```cpp
-void ExecuteGraph(const ExecutionPlan& plan) {
-    // Group passes into independent batches
-    auto batches = plan.GetParallelBatches();
-    
-    std::vector<CommandBuffer*> commandBuffers;
-    
-    // Record each batch in parallel
-    parallel_for(batches, [&](const PassBatch& batch) {
-        CommandBuffer* cmd = AllocateSecondaryCommandBuffer();
-        
-        for (auto& pass : batch.passes) {
-            InsertBarriers(cmd, pass.preBarriers);
-            pass.Execute(cmd);
-        }
-        
-        commandBuffers.push_back(cmd);
-    });
-    
-    // Submit all command buffers
-    primaryCommandBuffer->ExecuteSecondary(commandBuffers);
-    queue->Submit(primaryCommandBuffer);
-}
-```
 
 ---
