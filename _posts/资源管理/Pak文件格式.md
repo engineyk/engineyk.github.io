@@ -1,0 +1,722 @@
+---
+layout:     post
+title:      Unreal Engine Pak
+subtitle:   Unreal Pak文件格式
+date:       2022-3-4
+author:     kang
+header-img: img/post-bg-ocenwar.jpg
+catalog: true
+tags:
+    - 资产管理
+---
+
+
+Unreal Engine Pak 文件格式技术说明
+
+1. Pak 文件格式的二进制布局
+2. Footer/Index/Entry 结构
+3. 编码优化
+4. 压缩方案
+5. 加密与签名机制
+6. IoStore 对比
+7. 运行时读取流程、
+8. 先级系统等核心技术细节。
+9. Pak 格式的设计核心思想是：
+   1. 尾部定位
+   2. 索引分离
+   3. 块级压缩
+   4. 分层加密
+   5. 优先级覆盖
+   6. 在保证高效随机访问的同时支持增量更新和内容保护。
+ 
+# 一、Pak 文件概述
+
+.pak 文件是 Unreal Engine 的归档容器格式，类似于 ZIP 但针对游戏运行时做了深度优化。它将成百上千个 cooked 资源文件打包为单个文件，支持压缩、加密、签名和高效随机访问。
+
+# 二、Pak 文件整体结构
+
+```bash
+Pak File Binary Layout (Version 11, UE5):
+
+┌────────────────────────────────────────────────────┐  Offset 0
+│                                                    │
+│                   Entry Data                       │
+│              (Compressed/Encrypted                 │
+│               Asset Payloads)                      │
+│                                                    │
+│  ┌─────────────────────────────────┐               │
+│  │ Entry 0 Payload (aligned)       │               │
+│  ├─────────────────────────────────┤               │
+│  │ Entry 1 Payload (aligned)       │               │
+│  ├─────────────────────────────────┤               │
+│  │ Entry 2 Payload (aligned)       │               │
+│  ├─────────────────────────────────┤               │
+│  │ ...                             │               │
+│  ├─────────────────────────────────┤               │
+│  │ Entry N Payload (aligned)       │               │
+│  └─────────────────────────────────┘               │
+│                                                    │
+├────────────────────────────────────────────────────┤  Index Offset
+│                                                    │
+│                   Index / Directory                │
+│              (Entry Metadata Table)                │
+│                                                    │
+│  ┌────────────────────────────────┐                │
+│  │ Mount Point (FString)          │                │
+│  ├────────────────────────────────┤                │
+│  │ Entry Count (int32)            │                │
+│  ├────────────────────────────────┤                │
+│  │ Path Hash Index (UE5)          │                │
+│  ├────────────────────────────────┤                │
+│  │ Full Directory Index (UE5)     │                │
+│  ├────────────────────────────────┤                │
+│  │ Encoded Entry Records          │                │
+│  └────────────────────────────────┘                │
+│                                                    │
+├────────────────────────────────────────────────────┤  Info Offset
+│                                                    │
+│                   Pak Info (Footer)                │
+│              (Fixed size, at file end)             │
+│                                                    │
+│  ┌─────────────────────────────────┐               │
+│  │ Encryption Index GUID          │  16 bytes      │
+│  │ bEncryptedIndex                │  1 byte        │
+│  │ Magic: 0x5A6F12E1              │  4 bytes       │
+│  │ Version                        │  4 bytes       │
+│  │ Index Offset                   │  8 bytes       │
+│  │ Index Size                     │  8 bytes       │
+│  │ Index Hash (SHA1)              │  20 bytes      │
+│  │ Frozen Index (UE5)             │  1 byte        │
+│  │ Compression Method Names       │  variable      │
+│  └────────────────────────────────┘                │
+│                                                    │
+└────────────────────────────────────────────────────┘  EOF 
+
+```
+
+关键设计：Footer（FPakInfo）位于文件末尾，读取时先 seek 到文件尾部读取固定大小的 footer，从中获取 Index 的偏移和大小，再读取 Index 获得所有条目的元数据。
+
+# 三、FPakInfo（Footer）详细结构
+```bash
+FPakInfo Structure (Version 11):
+
+Offset from struct start    Field                    Type           Size
+─────────────────────────────────────────────────────────────────────────
+0x00                        EncryptionKeyGuid        FGuid          16 bytes
+0x10                        bEncryptedIndex          bool (uint8)   1 byte
+0x11                        Magic                    uint32         4 bytes
+                            Value: 0x5A6F12E1 ("Pak\x01" signature)
+0x15                        Version                  int32          4 bytes
+                            UE4.25: Version 9
+                            UE4.26: Version 9
+                            UE4.27: Version 10
+                            UE5.0+: Version 11
+0x19                        IndexOffset              int64          8 bytes
+                            Absolute byte offset to Index section
+0x21                        IndexSize                int64          8 bytes
+                            Total byte size of Index section
+0x29                        IndexHash                uint8[20]      20 bytes
+                            SHA-1 hash of the Index data
+0x3D                        bFrozenIndex             bool (uint8)   1 byte
+                            (Version >= 10) Pre-serialized index
+0x3E                        CompressionMethods       FString[]      variable
+                            (Version >= 9) Array of compression
+                            method name strings
+
+Total fixed size (v11):     221 bytes (excluding variable compression names)
+
+Reading procedure:
+1. Seek to (FileSize - sizeof(FPakInfo))
+2. Read and validate Magic == 0x5A6F12E1
+3. Read Version to determine struct layout
+4. Read IndexOffset and IndexSize
+5. Validate IndexHash against actual Index data
+```
+
+**版本历史**
+```bash
+Pak Version History:
+
+Version  UE Version   Key Changes
+───────────────────────────────────────────────────────────
+1        4.0-4.2      Initial format, basic entries
+2        4.3          Added compression support
+3        4.4          Added compression block info
+4        4.12         Added encryption support
+5        4.17         Added relative chunk offsets
+6        4.20         Added delete records
+7        4.21         Added encryption key GUID
+8        4.22         Added FName-based compression methods
+8A       4.23         Frozen index support (sub-version)
+9        4.25         Compression method name strings in footer
+10       4.27         Full directory index, path hash index
+11       5.0+         Optimized encoded entries, IoStore support
+```
+
+# 四、Index（目录索引）详细结构
+```bash
+Index Section Layout (Version 11):
+
+┌──────────────────────────────────────────────────────┐
+│ Mount Point                                          │
+│   FString: e.g. "../../../MyGame/Content/"           │
+│   [int32 Length][char[] Data][null terminator]       │
+├──────────────────────────────────────────────────────┤
+│ Entry Count (int32)                                  │
+│   Total number of file entries in this pak           │
+├──────────────────────────────────────────────────────┤
+│ Path Hash Index                                      │
+│   Used for O(1) lookup by filename hash              │
+│   ┌────────────────────────────────────────┐         │
+│   │ bHasPathHashIndex (uint8)              │         │
+│   │ PathHashIndexOffset (int64)            │         │
+│   │ PathHashIndexSize (int64)              │         │
+│   │ PathHashIndexHash (SHA1, 20 bytes)     │         │
+│   │                                        │         │
+│   │ Hash Table:                            │         │
+│   │   [uint64 Hash] → [int32 EntryIndex]   │         │
+│   │   Bucket count = NextPrime(EntryCount) │         │
+│   └────────────────────────────────────────┘         │
+├──────────────────────────────────────────────────────┤
+│ Full Directory Index                                 │
+│   Hierarchical directory tree for enumeration        │
+│   ┌────────────────────────────────────────┐         │
+│   │ bHasFullDirectoryIndex (uint8)         │         │
+│   │ FullDirectoryIndexOffset (int64)       │         │
+│   │ FullDirectoryIndexSize (int64)         │         │
+│   │ FullDirectoryIndexHash (SHA1, 20 bytes)│         │
+│   │                                        │         │
+│   │ Directory Tree:                        │         │
+│   │   TMap<FString, TMap<FString, int32>>  │         │
+│   │   DirectoryName → {FileName → Index}   │         │
+│   └────────────────────────────────────────┘         │
+├──────────────────────────────────────────────────────┤
+│ Encoded Pak Entries                                  │
+│   Compact binary encoding of all entry metadata      │
+│   ┌────────────────────────────────────────┐         │
+│   │ EncodedEntryCount (int32)              │         │
+│   │ EncodedEntry[0]                        │         │
+│   │ EncodedEntry[1]                        │         │
+│   │ ...                                    │         │
+│   │ EncodedEntry[N-1]                      │         │
+│   └────────────────────────────────────────┘         │
+└──────────────────────────────────────────────────────┘
+```
+
+双索引设计原理
+```bash
+Why Two Indexes?
+
+Path Hash Index (快速查找):
+─────────────────────────
+Purpose: O(1) file lookup by path
+Use case: OpenRead("/Game/Maps/Level1.umap")
+Structure: Hash table mapping uint64 path hash → entry index
+Algorithm: CityHash64 of lowercase full path
+
+Full Directory Index (目录遍历):
+──────────────────────────────
+Purpose: Directory enumeration and iteration
+Use case: FindFiles("/Game/Maps/", "*.umap")
+Structure: Nested TMap representing directory tree
+
+Runtime Memory Optimization:
+- Path Hash Index: ~16 bytes per entry (hash + index)
+- Full Directory Index: loaded on demand, can be discarded
+- Encoded Entries: ~32 bytes per entry (compact encoding)
+- For 100,000 files: ~4.6 MB total index memory
+```
+
+# 五、FPakEntry（条目记录）详细结构
+```bash
+FPakEntry Structure:
+
+Field                    Type           Size        Description
+─────────────────────────────────────────────────────────────────────────
+Offset                   int64          8 bytes     Absolute offset of payload in pak
+Size                     int64          8 bytes     Compressed size in bytes
+UncompressedSize         int64          8 bytes     Original uncompressed size
+CompressionMethodIndex   int32          4 bytes     Index into compression methods array
+                                                    0 = None, 1 = Zlib, 2 = Gzip,
+                                                    3 = Oodle, 4 = LZ4, etc.
+Hash                     uint8[20]      20 bytes    SHA-1 hash of uncompressed data
+CompressionBlocks        FPakCompressedBlock[]       Array of compression block descriptors
+CompressionBlockSize     uint32         4 bytes     Uncompressed size of each block
+                                                    (typically 64KB or 256KB)
+Flags                    uint8          1 byte      Bit flags:
+                                                    Bit 0: Encrypted
+                                                    Bit 1: Deleted (tombstone record)
+
+Total unencoded size: ~53+ bytes per entry
+```
+
+编码后的紧凑格式（UE5）
+```bash
+Encoded FPakEntry (Version 11):
+
+UE5 uses a compact bit-packed encoding to reduce index size.
+Each entry is encoded into a fixed 32-byte or variable-length record.
+
+Bit Layout (32 bytes = 256 bits):
+
+Bits 0-5:     CompressionMethodIndex (6 bits, max 63 methods)
+Bit 6:        bEncrypted
+Bit 7:        bDeleted
+Bits 8-13:    CompressionBlockSize encoding (6 bits)
+              0 = no compression
+              Non-zero = (value - 1) * 64KB alignment
+Bits 14-45:   CompressionBlockCount (32 bits, but typically uses fewer)
+Bits 46-85:   Offset (40 bits = 1 TB max pak size)
+Bits 86-125:  UncompressedSize (40 bits = 1 TB max file)
+Bits 126-165: Size (40 bits, compressed size)
+Bits 166-185: SHA1 hash (truncated or stored separately)
+
+Encoding decision tree:
+┌─ Is uncompressed?
+│  ├─ Yes: Size == UncompressedSize, skip block info
+│  └─ No:  Store compression blocks inline or as offset
+│
+├─ Is block-aligned?
+│  ├─ Yes: Blocks can be computed, no explicit block array
+│  └─ No:  Store explicit FPakCompressedBlock array
+│
+└─ Fits in 32 bytes?
+   ├─ Yes: Use inline encoded format
+   └─ No:  Fall back to full FPakEntry serialization
+```
+
+FPakCompressedBlock
+```bash
+FPakCompressedBlock Structure:
+
+Field                    Type           Size        Description
+─────────────────────────────────────────────────────────────────────────
+CompressedStart          int64          8 bytes     Absolute offset in pak file
+CompressedEnd            int64          8 bytes     Absolute end offset in pak file
+
+Total: 16 bytes per block
+
+Block Layout Example (256KB block size, 1MB file):
+
+Original File: 1,048,576 bytes (1 MB uncompressed)
+Compressed:      524,288 bytes (50% ratio)
+
+Block 0: Uncompressed [0, 262143]      → Compressed [FileOffset+0, FileOffset+131071]
+Block 1: Uncompressed [262144, 524287] → Compressed [FileOffset+131072, FileOffset+262143]
+Block 2: Uncompressed [524288, 786431] → Compressed [FileOffset+262144, FileOffset+393215]
+Block 3: Uncompressed [786432, 1048575]→ Compressed [FileOffset+393216, FileOffset+524287]
+
+Random Access:
+- To read bytes [300000, 400000]:
+  1. Determine blocks needed: Block 1 (covers 262144-524287)
+  2. Decompress only Block 1 (131 KB compressed → 256 KB)
+  3. Return bytes at offset (300000 - 262144) = 37856 within block
+  4. Only 1 block decompressed instead of entire file
+```
+
+# 六、压缩方案
+支持的压缩方法
+```bash
+Compression Methods Comparison:
+
+Method      Ratio    Decompress Speed    Compress Speed    Notes
+──────────────────────────────────────────────────────────────────────
+None        1.0x     N/A                 N/A               Fastest I/O
+Zlib        2-3x     ~300 MB/s           ~50 MB/s          Legacy default
+Gzip        2-3x     ~300 MB/s           ~50 MB/s          Zlib variant
+LZ4         1.5-2x   ~4000 MB/s          ~500 MB/s         Fast decompress
+Oodle       2.5-4x   ~2000 MB/s          ~100 MB/s         UE5 default ★
+  Kraken    3-4x     ~2000 MB/s          ~50 MB/s          Best ratio
+  Mermaid   2.5-3x   ~3000 MB/s          ~80 MB/s          Balanced
+  Selkie    2-2.5x   ~5000 MB/s          ~200 MB/s         Fastest
+  Leviathan 3.5-4x   ~1500 MB/s          ~30 MB/s          Maximum ratio
+
+Configuration in DefaultEngine.ini:
+[/Script/UnrealEd.ProjectPackagingSettings]
+; Per-platform compression
+PackageCompressionMethod=Oodle
+PackageCompressionLevel_DebugDevelopment=Fast
+PackageCompressionLevel_TestShipping=Normal
+PackageCompressionLevel_Distribution=Optimal
+```
+压缩块大小选择
+```bash
+Block Size Trade-offs:
+
+Block Size    Random Access    Compression Ratio    Memory Overhead
+──────────────────────────────────────────────────────────────────────
+16 KB         Excellent        Poor (low context)   Low
+64 KB         Good             Good                 Low          ← Default
+256 KB        Fair             Very Good            Medium       ← Recommended
+1 MB          Poor             Excellent            High
+Whole File    None             Best                 Very High
+
+Recommendation by asset type:
+├── Textures:     256 KB (large files, sequential access)
+├── Meshes:       256 KB (large files, sequential access)
+├── Audio:        64 KB  (streaming requires fine granularity)
+├── Blueprints:   64 KB  (small files, random access)
+├── Animations:   256 KB (medium files, sequential access)
+└── Config/Data:  64 KB  (small files, random access)
+```
+
+# 七、加密机制
+```bash
+Pak Encryption Architecture:
+
+┌─────────────────────────────────────────────────┐
+│                 Encryption Layers                │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  Layer 1: Index Encryption                      │
+│  ├── Algorithm: AES-256-CBC                     │
+│  ├── Scope: Entire Index section                │
+│  ├── Purpose: Hide file names and structure     │
+│  └── Flag: FPakInfo.bEncryptedIndex             │
+│                                                 │
+│  Layer 2: Per-Entry Encryption                  │
+│  ├── Algorithm: AES-256-CBC                     │
+│  ├── Scope: Individual file payloads            │
+│  ├── Purpose: Protect specific sensitive files  │
+│  ├── Flag: FPakEntry.Flags & 0x01              │
+│  └── Applied AFTER compression                  │
+│                                                 │
+│  Layer 3: Pak Signing (Integrity)               │
+│  ├── Algorithm: RSA + SHA-1                     │
+│  ├── Scope: Chunk-level signatures              │
+│  ├── Purpose: Tamper detection                  │
+│  └── Stored in: .sig file alongside .pak        │
+│                                                 │
+└─────────────────────────────────────────────────┘
+
+Data Flow:
+Raw Asset → Compress → Encrypt → Write to Pak
+Read from Pak → Decrypt → Decompress → Raw Asset
+
+Key Management:
+├── Encryption Key: AES-256 (32 bytes)
+│   ├── Stored in: crypto.json (build time)
+│   ├── Embedded in: Executable (shipping)
+│   └── Identified by: EncryptionKeyGuid in FPakInfo
+│
+└── Signing Keys: RSA-2048
+    ├── Private Key: Used at build time to sign
+    ├── Public Key: Embedded in executable for verification
+    └── Signature File: .sig alongside each .pak
+```
+
+加密配置
+```json
+// Build/CryptoKeys/crypto.json
+{
+    "EncryptionKey":
+    {
+        "Key": "BASE64_ENCODED_AES_256_KEY_HERE",
+        "Guid": "00000000-0000-0000-0000-000000000000"
+    },
+    "SigningKey":
+    {
+        "PublicKey":
+        {
+            "Exponent": "...",
+            "Modulus": "..."
+        },
+        "PrivateKey":
+        {
+            "Exponent": "...",
+            "Modulus": "..."
+        }
+    },
+    "bEnablePakSigning": true,
+    "bEnablePakIndexEncryption": true,
+    "bEnablePakIniEncryption": true,
+    "bEnablePakUAssetEncryption": false,
+    "bEnablePakFullAssetEncryption": false,
+    "SecondaryEncryptionKeys": []
+}
+```
+
+AES-256-CBC 加密细节
+```bash
+AES-256-CBC Encryption in Pak:
+
+Block Size: 16 bytes (AES block)
+Key Size:   32 bytes (256 bits)
+Mode:       CBC (Cipher Block Chaining)
+Padding:    PKCS7 (pad to 16-byte boundary)
+IV:         Zero IV (first block) — Note: UE uses zero IV for performance
+
+Encryption granularity:
+├── Index: Encrypted as single contiguous block
+│   Encrypted bytes = Align(IndexSize, 16)
+│
+└── Entry payload: Encrypted per compression block
+    For each compression block:
+      EncryptedSize = Align(CompressedBlockSize, 16)
+      Padding bytes = EncryptedSize - CompressedBlockSize
+
+Performance impact:
+├── AES-NI hardware acceleration: ~10 GB/s (negligible)
+├── Without AES-NI: ~500 MB/s (noticeable on mobile)
+└── Memory: No additional overhead (in-place decrypt)
+```
+
+# 八、Pak 签名（.sig 文件）
+UE5 引入了 IoStore（.utoc + .ucas）作为 Pak 的高性能替代：
+```bash
+IoStore vs Pak Comparison:
+
+Feature              Pak (.pak)              IoStore (.utoc/.ucas)
+──────────────────────────────────────────────────────────────────────
+Format               Single archive file     Split: TOC + Container
+Index                Embedded in .pak        Separate .utoc file
+Payload              In .pak file            Separate .ucas file(s)
+I/O Model            Synchronous seek+read   Async I/O dispatcher
+Alignment            Per-entry alignment     Sector-aligned (4KB)
+Decompression        CPU thread pool         Dedicated I/O threads
+Loading              FPakPlatformFile        FIoDispatcher
+Streaming            Manual                  Built-in priority queue
+NVMe Optimization    No                      Yes (DirectStorage ready)
+Backward Compatible  Yes                     UE5+ only
+
+IoStore File Structure:
+
+.utoc (Table of Contents):
+├── Header
+│   ├── Magic: 0x2D3D3D2D
+│   ├── Version
+│   ├── Container ID
+│   └── Entry count
+├── Chunk ID Array (FIoChunkId[])
+│   Each: 12 bytes (8-byte ID + 4-byte type/flags)
+├── Offset/Length Array
+│   Each: 10 bytes (5-byte offset + 5-byte length)
+├── Compression Blocks
+│   Each: 12 bytes (5-byte offset + 3-byte size + 1-byte method + 3-byte uncompressed)
+└── Directory Index (same as Pak v11)
+
+.ucas (Container Archive Store):
+├── Raw compressed/encrypted payload data
+├── Sector-aligned (4096 bytes)
+├── No per-entry headers
+└── Accessed via offsets from .utoc
+
+Coexistence:
+UE5 projects can use both formats simultaneously.
+IoStore is preferred for new content; Pak for backward compatibility.
+Mounting priority: IoStore > Pak (IoStore overrides Pak entries)
+```
+
+# 十、UnrealPak 命令行工具
+```bash
+# List contents of a pak file
+UnrealPak.exe <PakFile> -List
+UnrealPak.exe MyGame.pak -List -csv=contents.csv
+
+# Extract all files
+UnrealPak.exe <PakFile> -Extract <OutputDir>
+UnrealPak.exe MyGame.pak -Extract C:/Extracted/
+
+# Extract specific file
+UnrealPak.exe <PakFile> -Extract <OutputDir> -Filter=*.umap
+
+# Create pak from directory
+UnrealPak.exe <PakFile> -Create=<ResponseFile> [Options]
+# ResponseFile format (one entry per line):
+#   "SourcePath" "MountPath" [compress] [encrypt]
+
+# Create with compression
+UnrealPak.exe Output.pak -Create=filelist.txt -compress -compressionformat=Oodle
+
+# Create with encryption
+UnrealPak.exe Output.pak -Create=filelist.txt -encrypt -encryptindex -aes=<Base64Key>
+
+# Test pak integrity
+UnrealPak.exe <PakFile> -Test
+
+# Diff two pak files (for patch generation)
+UnrealPak.exe <NewPak> -Diff <OldPak> -Output=<PatchPak>
+
+# Get pak info (header/footer)
+UnrealPak.exe <PakFile> -Info
+
+# Repack (optimize ordering)
+UnrealPak.exe <PakFile> -Repack -Order=<OrderFile>
+
+# Order file format (for seek optimization):
+#   /Game/Maps/Level1.umap 0
+#   /Game/Maps/Level1_BuiltData.uasset 1
+#   /Game/Characters/Player.uasset 2
+```
+
+文件排序优化
+```
+Pak File Ordering (Seek Optimization):
+
+Problem: Random file placement causes excessive HDD seeks
+Solution: Order files by access pattern
+
+Access Pattern Analysis:
+1. Boot: Engine init → Core UI → Main Menu
+2. Level Load: Map → Sublevels → Textures → Meshes → Audio
+3. Gameplay: Streaming textures → Audio → Particles
+
+Optimal Ordering:
+┌─────────────────────────────────────────┐
+│ Priority 0: Boot-critical files         │  ← Read first
+│   Engine shaders, startup map, core UI  │
+├─────────────────────────────────────────┤
+│ Priority 1: Main menu assets            │
+│   Menu UI, background, music            │
+├─────────────────────────────────────────┤
+│ Priority 2: Level maps and sublevels    │
+│   Ordered by level progression          │
+├─────────────────────────────────────────┤
+│ Priority 3: Textures (by mip level)     │
+│   Highest mips first (streaming)        │
+├─────────────────────────────────────────┤
+│ Priority 4: Static meshes              │
+├─────────────────────────────────────────┤
+│ Priority 5: Audio                       │
+├─────────────────────────────────────────┤
+│ Priority 6: Animations                  │
+├─────────────────────────────────────────┤
+│ Priority 7: Miscellaneous               │  ← Read last
+└─────────────────────────────────────────┘
+
+Generate order file from profiling:
+1. Run game with -fileopenlog
+2. Produces: Saved/Logs/FileOpenOrder.log
+3. Use as input: UnrealPak.exe -Repack -Order=FileOpenOrder.log
+```
+
+# 十一、运行时 Pak 读取流程
+```
+Runtime Read Pipeline:
+
+Application Request: LoadObject("/Game/Maps/Level1")
+         │
+         ▼
+┌─────────────────────────┐
+│ FPakPlatformFile        │  Virtual file system layer
+│ ::OpenRead(Filename)    │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│ Search Mounted Paks     │  Iterate paks by priority (highest first)
+│ (Priority Order)        │  Patch paks (priority 100+) checked first
+│                         │  Base paks (priority 0) checked last
+└────────┬────────────────┘
+         │ Found in pakchunk1_P.pak (priority 100)
+         ▼
+┌─────────────────────────┐
+│ Path Hash Lookup        │  O(1) hash table lookup
+│ CityHash64(lowercase    │  Returns encoded entry index
+│   filename) → index     │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│ Decode FPakEntry        │  Unpack compact 32-byte record
+│ Get: Offset, Size,      │  Determine compression, encryption
+│ CompressionMethod,      │
+│ Flags                   │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│ Seek to Entry Offset    │  Platform file seek
+│ in .pak file            │  (or async I/O request for IoStore)
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│ Read Compression Blocks │  Read only needed blocks
+│ (Block-level I/O)       │  for partial/streaming reads
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│ Decrypt (if encrypted)  │  AES-256-CBC per block
+│ In-place decryption     │  Using key from EncryptionKeyGuid
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│ Decompress              │  Oodle/Zlib/LZ4 per block
+│ Block → Output Buffer   │  Parallel decompression possible
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│ Return FArchive*        │  Standard UE serialization interface
+│ (Read-only stream)      │  Transparent to asset loading code
+└─────────────────────────┘
+```
+
+# 十二、Pak 挂载优先级系统
+```
+Pak Mount Priority System:
+
+Priority Resolution:
+- Multiple paks can contain the same file path
+- Higher priority pak wins
+- Enables patching without modifying original paks
+
+Priority Assignment:
+┌──────────────────────────────────────────────────────────┐
+│ Pak File                              Priority           │
+├──────────────────────────────────────────────────────────┤
+│ MyGame-WindowsNoEditor.pak            0 (base)           │
+│ pakchunk1-WindowsNoEditor.pak         0 (base)           │
+│ pakchunk2-WindowsNoEditor.pak         0 (base)           │
+│ MyGame-WindowsNoEditor_P.pak          100 (patch 1)      │
+│ pakchunk1-WindowsNoEditor_P.pak       100 (patch 1)      │
+│ MyGame-WindowsNoEditor_2_P.pak        200 (patch 2)      │
+│ DLC_Expansion1.pak                    50 (DLC)           │
+│ Mods/UserMod.pak                      1000 (mod)         │
+└──────────────────────────────────────────────────────────┘
+
+Priority naming convention:
+- Base:     pakchunkN-Platform.pak           → Priority 0
+- Patch 1:  pakchunkN-Platform_P.pak         → Priority 100
+- Patch 2:  pakchunkN-Platform_2_P.pak       → Priority 200
+- Patch N:  pakchunkN-Platform_N_P.pak       → Priority N*100
+
+File resolution example:
+Request: /Game/Textures/T_Hero.uasset
+
+Search order:
+1. MyGame_2_P.pak (priority 200) → NOT FOUND
+2. MyGame_P.pak   (priority 100) → FOUND → Use this version
+3. MyGame.pak     (priority 0)   → (skipped, already found)
+```
+
+# 十三、内存映射与性能特性
+```
+Memory Mapping:
+
+Platform          Memory Mapped I/O    Notes
+──────────────────────────────────────────────────────────
+Windows           Yes (CreateFileMapping)   Default for uncompressed
+Linux             Yes (mmap)               Default for uncompressed
+macOS             Yes (mmap)               Default for uncompressed
+PS5               Yes (custom)             DirectStorage integration
+Xbox Series       Yes (custom)             DirectStorage integration
+Switch            No                       Limited address space
+Android           Partial                  Depends on storage type
+iOS               Yes (mmap)               Limited by OS
+
+Memory mapped benefits:
+├── Zero-copy reads for uncompressed data
+├── OS-managed page cache (no double buffering)
+├── Lazy loading (pages faulted in on access)
+└── Shared across processes (if applicable)
+
+Limitations:
+├── Only works for uncompressed, unencrypted entries
+├── Requires contiguous virtual address space
+├── File must not exceed platform address space limits
+└── Compressed entries still require explicit read+decompress
+```
