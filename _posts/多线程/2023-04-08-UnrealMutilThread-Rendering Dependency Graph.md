@@ -615,6 +615,131 @@ def cull_unused_passes(graph, required_outputs):
 
 ## 2.5 Execution & Scheduling
 
+收集Pass（AddPass）、编译渲染图之后，便可以**执行渲染图**了，由FRDGBuilder::Execute承担
+```c++
+void FRDGBuilder::Execute()
+{
+    SCOPED_NAMED_EVENT(FRDGBuilder_Execute, FColor::Emerald);
+
+    // 在编译之前，在图的末尾创建epilogue pass.
+    EpiloguePass = Passes.Allocate<FRDGSentinelPass>(Allocator, RDG_EVENT_NAME("Graph Epilogue"));
+    SetupEmptyPass(EpiloguePass);
+
+    const FRDGPassHandle ProloguePassHandle = GetProloguePassHandle();
+    const FRDGPassHandle EpiloguePassHandle = GetEpiloguePassHandle();
+    FRDGPassHandle LastUntrackedPassHandle = ProloguePassHandle;
+
+    // 非立即模式.
+    if (!GRDGImmediateMode)
+    {
+        // 执行之前先编译, 具体见11.3.3章节.
+        Compile();
+
+        {
+            SCOPE_CYCLE_COUNTER(STAT_RDG_CollectResourcesTime);
+
+            // 收集Pass资源.
+            for (FRDGPassHandle PassHandle = Passes.Begin(); PassHandle != Passes.End(); ++PassHandle)
+            {
+                if (!PassesToCull[PassHandle])
+                {
+                    CollectPassResources(PassHandle);
+                }
+            }
+
+            // 结束纹理提取.
+            for (const auto& Query : ExtractedTextures)
+            {
+                EndResourceRHI(EpiloguePassHandle, Query.Key, 1);
+            }
+
+            // 结束缓冲区提取.
+            for (const auto& Query : ExtractedBuffers)
+            {
+                EndResourceRHI(EpiloguePassHandle, Query.Key, 1);
+            }
+        }
+
+        // 收集Pass的屏障.
+        {
+            SCOPE_CYCLE_COUNTER(STAT_RDG_CollectBarriersTime);
+
+            for (FRDGPassHandle PassHandle = Passes.Begin(); PassHandle != Passes.End(); ++PassHandle)
+            {
+                if (!PassesToCull[PassHandle])
+                {
+                    CollectPassBarriers(PassHandle, LastUntrackedPassHandle);
+                }
+            }
+        }
+    }
+
+    // 遍历所有纹理, 每个纹理增加尾声转换.
+    for (FRDGTextureHandle TextureHandle = Textures.Begin(); TextureHandle != Textures.End(); ++TextureHandle)
+    {
+        FRDGTextureRef Texture = Textures[TextureHandle];
+
+        if (Texture->GetRHIUnchecked())
+        {
+            AddEpilogueTransition(Texture, LastUntrackedPassHandle);
+            Texture->Finalize();
+        }
+    }
+
+    // 遍历所有缓冲区, 每个缓冲区增加尾声转换.
+    for (FRDGBufferHandle BufferHandle = Buffers.Begin(); BufferHandle != Buffers.End(); ++BufferHandle)
+    {
+        FRDGBufferRef Buffer = Buffers[BufferHandle];
+
+        if (Buffer->GetRHIUnchecked())
+        {
+            AddEpilogueTransition(Buffer, LastUntrackedPassHandle);
+            Buffer->Finalize();
+        }
+    }
+
+    // 执行Pass.
+    if (!GRDGImmediateMode)
+    {
+        QUICK_SCOPE_CYCLE_COUNTER(STAT_FRDGBuilder_Execute_Passes);
+
+        for (FRDGPassHandle PassHandle = Passes.Begin(); PassHandle != Passes.End(); ++PassHandle)
+        {
+            // 执行非裁剪的Pass.
+            if (!PassesToCull[PassHandle])
+            {
+                ExecutePass(Passes[PassHandle]);
+            }
+        }
+    }
+    else
+    {
+        ExecutePass(EpiloguePass);
+    }
+
+    RHICmdList.SetGlobalUniformBuffers({});
+
+#if WITH_MGPU
+    (......)
+#endif
+
+    // 执行纹理提取.
+    for (const auto& Query : ExtractedTextures)
+    {
+        *Query.Value = Query.Key->PooledRenderTarget;
+    }
+
+    // 执行缓冲区提取.
+    for (const auto& Query : ExtractedBuffers)
+    {
+        *Query.Value = Query.Key->PooledBuffer;
+    }
+
+    // 清理.
+    Clear();
+}
+```
+
 ### 1. Barrier Generation 生成
 
 Automatic barrier insertion between passes:
