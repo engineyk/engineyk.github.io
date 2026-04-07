@@ -7,7 +7,7 @@ author:     kang
 header-img: img/post-bg-ocenwar.jpg
 catalog: true
 tags:
-    - Rendering
+    - rendering
 ---
 
 # <center>渲染管线<center>

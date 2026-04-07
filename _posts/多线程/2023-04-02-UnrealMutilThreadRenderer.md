@@ -7,7 +7,7 @@ author:     kang
 header-img: img/post-bg-ocenwar.jpg
 catalog: true
 tags:
-    - multi-thread rendering
+    - multi thread rendering
 ---
 
 <center> Unreal Multi-Thread Renderer </center>
