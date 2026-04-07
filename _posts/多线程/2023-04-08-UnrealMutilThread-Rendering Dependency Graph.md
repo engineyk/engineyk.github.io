@@ -50,8 +50,6 @@ tags:
                             |   → Traditional Immediate Mode Rendering
                             |   → RDG Approach
                             |   → Feature Comparison
-                            |   → Unreal Engine 5 (RDG)
-5.                 |
 ```
 
 # 一. Overview
@@ -1126,7 +1124,7 @@ The rendering dependency graph is fundamentally a DAG: RDG 是一个有向无环
 
 
 # 三. Implementation
-### 11.1 Traditional Immediate Mode Rendering
+### 1. Traditional Immediate Mode Rendering
 
 ```cpp
 // Traditional: Manual, error-prone, hard to maintain
@@ -1149,7 +1147,7 @@ void RenderFrame_Traditional() {
 }
 ```
 
-### 11.2 RDG Approach
+### 2. RDG Approach
 
 ```cpp
 // RDG: Declarative, automatic, maintainable
@@ -1161,7 +1159,7 @@ void RenderFrame_RDG(RDGBuilder& builder) {
 }
 ```
 
-### 11.3 Feature Comparison
+### 3. Feature Comparison
 
 | Feature               | Traditional         | RDG                   |
 | --------------------- | ------------------- | --------------------- |
