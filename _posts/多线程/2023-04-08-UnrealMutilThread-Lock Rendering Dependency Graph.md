@@ -15,29 +15,46 @@ tags:
 
 # <center> Overview</center>
 
-```
-1. Overview             |
-                    |   Three Threads
-                    |       → Game Thread (GT)
-                    |           → ENQUEUE_RENDER_COMMAND
-                    |       → Render Thread (RT)
-                    |       → RHI Thread
-                    |   Thread Data Flow
-                    |
-2. Builder          |
-                    |   → Compiile
-                    |   → Excute
-                    |   → Pass
-2. RDGEngine        |
-                    |   → Compiile
-                    |   → Execution & Scheduling
-                    |   → Pass System
-                    |
+```        
+1. Overview                 |
+                            |   Pipeline
+                            |   What && How && Why
+                            |   Thread Data Flow
+                            |
+3. RDGEngine                |
+                            |   → Dev
+                            |       → Debugging
+                            |       → Pass
+                            |       → Builder
+                            |   → Builder
+                            |       → RDGBuilder Pattern: 构建参数 AddPass
+                            |       → Pass Declaration 单个Pass
+                            |       → Connecting Pass 多个Pass连接
+                            |   → Compiile
+                            |   → Pass System
+                            |       → Pass Types
+                            |       → Pass Execution
+                            |       → Pass Merging
+                            |   → Resouces Management
+                            |   → Execution & Scheduling
+                            |       → Barrier Generation
+                            |       → Barrier Batching
+                            |       → Async Compute Scheduling
+                            |       → Parallel Command Recording
+4. Optimization Strategies  |
+                            |   → Dev
+                            |   → Compiile
+5. Implementation           |
+                            |   → Traditional Immediate Mode Rendering
+                            |   → RDG Approach
+                            |   → Feature Comparison
+                            |   → Unreal Engine 5 (RDG)
+6.                 |
 ```
 
 # Overview
 
-## High-Level Architecture
+## Pipeline
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -197,3 +214,498 @@ Resources are accessed through typed views:
 | `RTV` (Render Target View)    | Write as color attachment         |
 | `DSV` (Depth Stencil View)    | Write as depth/stencil attachment |
 | `CBV` (Constant Buffer View)  | Uniform/constant buffer access    |
+
+
+## Builder
+
+
+### 4.1 Builder Pattern
+
+The graph is constructed using a builder pattern:
+
+```cpp
+class RDGBuilder {
+public:
+    // Create a new transient texture
+    RDGTextureRef CreateTexture(const FRDGTextureDesc& desc, const char* name);
+    
+    // Create a new transient buffer
+    RDGBufferRef CreateBuffer(const FRDGBufferDesc& desc, const char* name);
+    
+    // Import an external resource
+    RDGTextureRef RegisterExternalTexture(FRHITexture* texture, const char* name);
+    
+    // Add a render pass
+    template<typename ParameterStruct>
+    void AddPass(
+        const char* name,
+        const ParameterStruct* parameters,
+        ERDGPassFlags flags,
+        std::function<void(const ParameterStruct&, FRHICommandList&)> executeLambda
+    );
+};
+```
+
+### 4.2 Pass Declaration Example
+
+```cpp
+void AddGBufferPass(RDGBuilder& builder, const ViewInfo& view) {
+    // Declare outputs
+    RDGTextureRef albedoRT = builder.CreateTexture(
+        FRDGTextureDesc::Create2D(width, height, PF_R8G8B8A8_UNORM),
+        "GBuffer_Albedo"
+    );
+    
+    RDGTextureRef normalRT = builder.CreateTexture(
+        FRDGTextureDesc::Create2D(width, height, PF_R16G16B16A16_FLOAT),
+        "GBuffer_Normal"
+    );
+    
+    RDGTextureRef depthRT = builder.CreateTexture(
+        FRDGTextureDesc::Create2D(width, height, PF_D32_FLOAT),
+        "GBuffer_Depth"
+    );
+    
+    // Declare pass parameters
+    auto* params = builder.AllocParameters<FGBufferPassParams>();
+    params->albedoTarget = builder.CreateRTV(albedoRT);
+    params->normalTarget = builder.CreateRTV(normalRT);
+    params->depthTarget  = builder.CreateDSV(depthRT);
+    
+    // Add the pass
+    builder.AddPass(
+        "GBufferPass",
+        params,
+        ERDGPassFlags::Raster,
+        [view](const FGBufferPassParams& params, FRHICommandList& cmdList) {
+            // Actual rendering commands
+            cmdList.SetRenderTargets(params.albedoTarget, params.normalTarget, params.depthTarget);
+            for (const auto& mesh : view.visibleMeshes) {
+                cmdList.DrawIndexed(mesh);
+            }
+        }
+    );
+}
+```
+
+### 4.3 Connecting Passes
+
+Passes are connected implicitly through shared resource references:
+
+```cpp
+void SetupFrame(RDGBuilder& builder) {
+    // Pass 1: GBuffer
+    auto [albedo, normal, depth] = AddGBufferPass(builder, view);
+    
+    // Pass 2: SSAO (reads depth, writes SSAO texture)
+    auto ssaoTexture = AddSSAOPass(builder, depth);
+    
+    // Pass 3: Lighting (reads GBuffer + SSAO)
+    auto sceneColor = AddLightingPass(builder, albedo, normal, depth, ssaoTexture);
+    
+    // Pass 4: Post Processing
+    auto finalColor = AddPostProcessPass(builder, sceneColor);
+    
+    // Pass 5: Present
+    AddPresentPass(builder, finalColor, swapChainTarget);
+}
+```
+
+---
+
+
+## RDG Engine
+
+### 3.2 Three-Phase Pipeline
+
+The RDG operates in three distinct phases per frame:
+
+#### Phase 1: Setup (Declaration)
+- Passes declare their resource inputs/outputs
+- Resources are created as virtual handles
+- No GPU work is performed
+- Runs on CPU, can be parallelized
+
+#### Phase 2: Compile (Analysis)
+- Build dependency graph from declared inputs/outputs
+- Calculate resource lifetimes
+- Cull unreferenced passes
+- Determine execution order (topological sort)
+- Generate synchronization barriers
+- Perform memory aliasing analysis
+
+#### Phase 3: Execute (Recording & Submission)
+- Allocate actual GPU resources
+- Record command buffers
+- Insert barriers and transitions
+- Submit to GPU queues
+
+
+## Resource Management 资源管理
+
+
+
+### 5.1 Transient Resource Pool
+
+Transient resources are allocated from a pool and reused across frames:
+
+```cpp
+class TransientResourcePool {
+public:
+    // Allocate a texture matching the description
+    GPUTexture* Allocate(const TextureDesc& desc);
+    
+    // Return a texture to the pool
+    void Release(GPUTexture* texture);
+    
+    // Called at frame end to manage pool size
+    void Tick();
+    
+private:
+    // Pool organized by resource description
+    std::unordered_map<TextureDesc, std::vector<GPUTexture*>> pool;
+    
+    // Track unused resources for eviction
+    std::unordered_map<GPUTexture*, uint32_t> unusedFrameCount;
+    static constexpr uint32_t MAX_UNUSED_FRAMES = 30;
+};
+```
+
+### 5.2 Resource Lifetime Tracking
+
+```
+Frame Timeline:
+  Pass1    Pass2    Pass3    Pass4    Pass5    Pass6
+   │        │        │        │        │        │
+   ├─ ResA ─┤        │        │        │        │
+   │        ├─ ResB ─┼─ ResB ─┤        │        │
+   │        │        ├─ ResC ─┼─ ResC ─┤        │
+   │        │        │        ├─ ResD ─┼─ ResD ─┤
+   │        │        │        │        │        │
+```
+
+Resource lifetimes are computed as:
+- **First Use**: The earliest pass that reads or writes the resource
+- **Last Use**: The latest pass that reads or writes the resource
+- **Allocation Point**: Just before first use
+- **Deallocation Point**: Just after last use
+
+### 5.3 Memory Aliasing
+
+Non-overlapping resources can share the same physical memory:
+
+```
+Physical Memory Block:
+┌──────────────────────────────────────────────────┐
+│  ResA (Pass1-2)  │         ResC (Pass3-5)        │
+│──────────────────│───────────────────────────────│
+│       ResB (Pass2-4)       │  ResD (Pass5-6)     │
+└──────────────────────────────────────────────────┘
+
+Aliasing: ResA and ResC share memory (non-overlapping lifetimes)
+          ResB and ResD share memory (non-overlapping lifetimes)
+```
+
+Aliasing algorithm:
+1. Sort resources by size (descending)
+2. For each resource, find a memory slot where no lifetime overlap exists
+3. Use placed/aliased resource APIs (D3D12 Placed Resources, Vulkan Memory Aliasing)
+
+### 5.4 External vs Transient Resources
+
+```cpp
+// External: imported from outside the graph, persists across frames
+RDGTextureRef backBuffer = builder.RegisterExternalTexture(
+    swapChain->GetCurrentBackBuffer(), "BackBuffer"
+);
+
+// Transient: created and destroyed within the frame
+RDGTextureRef tempBlur = builder.CreateTexture(
+    FRDGTextureDesc::Create2D(w, h, PF_R16G16B16A16_FLOAT),
+    "TempBlurTarget"
+);
+
+// Extracted: transient promoted to external for next frame use
+RDGTextureRef historyBuffer = builder.CreateTexture(desc, "HistoryBuffer");
+builder.QueueExtraction(historyBuffer, &savedHistoryBuffer);
+```
+
+---
+
+
+## Pass System
+
+### 6.1 Pass Types
+
+```cpp
+enum class ERDGPassFlags : uint32_t {
+    None          = 0,
+    Raster        = 1 << 0,   // Uses render targets, draw calls
+    Compute       = 1 << 1,   // Uses compute dispatch
+    AsyncCompute  = 1 << 2,   // Runs on async compute queue
+    Copy          = 1 << 3,   // Transfer operations
+    NeverCull     = 1 << 4,   // Cannot be culled (e.g., readback)
+    SkipBarriers  = 1 << 5,   // Manual barrier management
+};
+```
+
+### 6.2 Parameter Struct Pattern (UE5 Style)
+
+Unreal Engine 5 uses a macro-based parameter declaration:
+
+```cpp
+BEGIN_SHADER_PARAMETER_STRUCT(FDeferredLightingParams, )
+    SHADER_PARAMETER_RDG_TEXTURE(Texture2D, GBufferA)        // SRV input
+    SHADER_PARAMETER_RDG_TEXTURE(Texture2D, GBufferB)        // SRV input
+    SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SceneDepth)      // SRV input
+    SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SSAOTexture)     // SRV input
+    SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, SceneColor) // UAV output
+    SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
+    RENDER_TARGET_BINDING_SLOTS()                             // RTV slots
+END_SHADER_PARAMETER_STRUCT()
+```
+
+### 6.3 Pass Execution Lambda
+
+The execution lambda captures the actual GPU work:
+
+```cpp
+builder.AddPass(
+    RDG_EVENT_NAME("DeferredLighting"),
+    passParameters,
+    ERDGPassFlags::Compute,
+    [this, viewInfo, lightData](FRHIComputeCommandList& cmdList) {
+        // Set compute shader
+        cmdList.SetComputeShader(deferredLightingCS);
+        
+        // Bind parameters (auto-bound from parameter struct)
+        SetShaderParameters(cmdList, deferredLightingCS, *passParameters);
+        
+        // Dispatch
+        uint32_t groupsX = DivideAndRoundUp(viewInfo.width, 8);
+        uint32_t groupsY = DivideAndRoundUp(viewInfo.height, 8);
+        cmdList.Dispatch(groupsX, groupsY, 1);
+    }
+);
+```
+
+---
+
+
+## Dependency Resolution
+
+### 7.1 Implicit Dependencies
+
+Dependencies are inferred from resource usage:
+
+```
+Pass A writes ResourceX → Pass B reads ResourceX
+∴ Pass B depends on Pass A (B must execute after A)
+```
+
+### 7.2 Dependency Graph Construction Algorithm
+
+```python
+def build_dependency_graph(passes):
+    graph = DirectedGraph()
+    resource_writers = {}  # resource -> last writer pass
+    
+    for pass_node in passes:
+        graph.add_node(pass_node)
+        
+        # For each input resource, add edge from writer to this pass
+        for resource in pass_node.inputs:
+            if resource in resource_writers:
+                writer = resource_writers[resource]
+                graph.add_edge(writer, pass_node)  # writer -> reader
+        
+        # Track this pass as the writer for its outputs
+        for resource in pass_node.outputs:
+            resource_writers[resource] = pass_node
+    
+    return graph
+```
+
+### 7.3 Topological Sort for Execution Order
+
+```python
+def topological_sort(graph):
+    in_degree = {node: 0 for node in graph.nodes}
+    for u, v in graph.edges:
+        in_degree[v] += 1
+    
+    queue = [node for node in graph.nodes if in_degree[node] == 0]
+    execution_order = []
+    
+    while queue:
+        node = queue.pop(0)  # Can use priority for optimization
+        execution_order.append(node)
+        
+        for neighbor in graph.successors(node):
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+    
+    assert len(execution_order) == len(graph.nodes), "Cycle detected!"
+    return execution_order
+```
+
+### 7.4 Dead Pass Culling
+
+Passes whose outputs are never consumed can be removed:
+
+```python
+def cull_unused_passes(graph, required_outputs):
+    # Start from required outputs (e.g., present pass)
+    visited = set()
+    stack = [pass for pass in graph.nodes if pass.has_side_effects 
+             or any(out in required_outputs for out in pass.outputs)]
+    
+    # Backward traversal: mark all passes that contribute to required outputs
+    while stack:
+        current = stack.pop()
+        if current in visited:
+            continue
+        visited.add(current)
+        
+        # Add all predecessors (passes that produce our inputs)
+        for predecessor in graph.predecessors(current):
+            stack.append(predecessor)
+    
+    # Remove unvisited passes
+    culled = [p for p in graph.nodes if p not in visited]
+    for pass_node in culled:
+        graph.remove_node(pass_node)
+    
+    return culled
+```
+
+---
+
+
+
+## Execution & Scheduling
+
+### 8.1 Barrier Generation
+
+Automatic barrier insertion between passes:
+
+```cpp
+struct ResourceBarrier {
+    GPUResource* resource;
+    ResourceState before;   // e.g., RENDER_TARGET
+    ResourceState after;    // e.g., SHADER_RESOURCE
+    uint32_t subresource;   // Mip/slice level
+};
+
+void GenerateBarriers(const ExecutionOrder& order) {
+    std::unordered_map<RDGResource*, ResourceState> currentStates;
+    
+    for (auto& pass : order) {
+        std::vector<ResourceBarrier> barriers;
+        
+        for (auto& [resource, requiredState] : pass.resourceAccesses) {
+            ResourceState currentState = currentStates[resource];
+            
+            if (currentState != requiredState) {
+                barriers.push_back({
+                    resource->GetGPUResource(),
+                    currentState,
+                    requiredState
+                });
+                currentStates[resource] = requiredState;
+            }
+        }
+        
+        if (!barriers.empty()) {
+            pass.preBarriers = std::move(barriers);
+        }
+    }
+}
+```
+
+### 8.2 Barrier Batching
+
+Barriers are batched for efficiency:
+
+```
+Before batching:
+  Barrier(ResA: SRV → UAV)
+  Dispatch()
+  Barrier(ResB: RTV → SRV)
+  Barrier(ResC: RTV → SRV)
+  DrawCall()
+
+After batching:
+  Barrier(ResA: SRV → UAV)
+  Dispatch()
+  BatchedBarrier(ResB: RTV → SRV, ResC: RTV → SRV)  // Single API call
+  DrawCall()
+```
+
+### 8.3 Async Compute Scheduling
+
+```
+Graphics Queue:  [Shadow] ──→ [GBuffer] ──→ [Lighting] ──→ [PostProcess]
+                                  │              ↑
+                                  │    ┌─────────┘
+                                  ▼    │
+Async Compute:              [SSAO Compute] ──→ [SSAO Blur]
+                            (fence signal)     (fence wait)
+```
+
+Async compute passes are scheduled on a separate queue with fence synchronization:
+
+```cpp
+void ScheduleAsyncCompute(ExecutionPlan& plan) {
+    for (auto& pass : plan.passes) {
+        if (pass.flags & ERDGPassFlags::AsyncCompute) {
+            // Find the latest graphics dependency
+            auto graphicsDep = FindLatestGraphicsDependency(pass);
+            
+            // Insert fence after graphics dependency
+            plan.InsertFence(graphicsDep, FenceType::GraphicsToCompute);
+            
+            // Find the earliest graphics consumer
+            auto graphicsConsumer = FindEarliestGraphicsConsumer(pass);
+            
+            // Insert wait before graphics consumer
+            plan.InsertWait(graphicsConsumer, FenceType::ComputeToGraphics);
+            
+            // Move pass to async compute queue
+            plan.MoveToAsyncQueue(pass);
+        }
+    }
+}
+```
+
+### 8.4 Parallel Command Recording
+
+The graph enables parallel command buffer recording:
+
+```cpp
+void ExecuteGraph(const ExecutionPlan& plan) {
+    // Group passes into independent batches
+    auto batches = plan.GetParallelBatches();
+    
+    std::vector<CommandBuffer*> commandBuffers;
+    
+    // Record each batch in parallel
+    parallel_for(batches, [&](const PassBatch& batch) {
+        CommandBuffer* cmd = AllocateSecondaryCommandBuffer();
+        
+        for (auto& pass : batch.passes) {
+            InsertBarriers(cmd, pass.preBarriers);
+            pass.Execute(cmd);
+        }
+        
+        commandBuffers.push_back(cmd);
+    });
+    
+    // Submit all command buffers
+    primaryCommandBuffer->ExecuteSecondary(commandBuffers);
+    queue->Submit(primaryCommandBuffer);
+}
+```
+
+---
