@@ -438,7 +438,9 @@ FRDGPassRef FRDGBuilder::AddPass(FRDGEventName&& Name, const ParameterStructType
 ### RDG Pass
 RDG Pass模块涉及了屏障、资源转换、RDGPass等概念：
 RDG Pass和渲染Pass并非一一对应关系，有可能多个合并成一个渲染Pass，详见后面章节。RDG Pass最复杂莫过于多线程处理、资源状态转换以及依赖处理，不过本节先不涉及
-[text](<RDG/RDG Pass.md>)
+
+[RDG Pass](<RDG/RDG Pass.md>)
+
 ---
 
 
@@ -1120,4 +1122,4 @@ The rendering dependency graph is fundamentally a DAG: RDG 是一个有向无环
   - 查找并建立分叉和合并Pass节点
   - 合并所有具体相同渲染目标的光栅化Pass等步骤
 
-[text](RDG/Compile.md)
+[Compile](<RDG/Compile.md>)
