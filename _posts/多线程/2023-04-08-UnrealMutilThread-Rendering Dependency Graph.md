@@ -389,6 +389,7 @@ builder.AddPass(
 
 
 ### 5. Parameter Struct Pattern (UE5 Style)
+
 Unreal Engine 5 uses a macro-based parameter declaration:
 
 ```cpp
@@ -403,8 +404,45 @@ BEGIN_SHADER_PARAMETER_STRUCT(FDeferredLightingParams, )
 END_SHADER_PARAMETER_STRUCT()
 ```
 
+### 6. AddPass
+
+FRDGBuilder::AddPass是向RDG系统增加一个包含Pass参数和Lambda的Pass
+AddPass会根据传入的参数构建一个RDG Pass的实例，然后设置该Pass的纹理和缓冲区数据，接着用内部设置Pass的依赖Pass等句柄，如果是立即模式，会重定向纹理和缓冲区的Merge状态成Pass状态，并且直接执行
+
+```c++
+// Engine\Source\Runtime\RenderCore\Public\RenderGraphBuilder.inl
+
+template <typename ParameterStructType, typename ExecuteLambdaType>
+FRDGPassRef FRDGBuilder::AddPass(FRDGEventName&& Name, const ParameterStructType* ParameterStruct, ERDGPassFlags Flags, ExecuteLambdaType&& ExecuteLambda)
+{
+    using LambdaPassType = TRDGLambdaPass<ParameterStructType, ExecuteLambdaType>;
+
+    (......)
+
+    // 分配RDG Pass实例.
+    FRDGPass* Pass = Allocator.AllocObject<LambdaPassType>(
+        MoveTemp(Name),
+        ParameterStruct,
+        OverridePassFlags(Name.GetTCHAR(), Flags, LambdaPassType::kSupportsAsyncCompute),
+        MoveTemp(ExecuteLambda));
+
+    // 加入Pass列表.
+    Passes.Insert(Pass);
+    // 设置Pass.
+    SetupPass(Pass);
+    
+    return Pass;
+}
+```
+
+### RDG Pass
+RDG Pass模块涉及了屏障、资源转换、RDGPass等概念：
+RDG Pass和渲染Pass并非一一对应关系，有可能多个合并成一个渲染Pass，详见后面章节。RDG Pass最复杂莫过于多线程处理、资源状态转换以及依赖处理，不过本节先不涉及
+[text](<RDG Pass.md>)
 
 ---
+
+
 
 ## 2.3 Resouces Management 资源管理
 
@@ -615,6 +653,131 @@ def cull_unused_passes(graph, required_outputs):
 
 ## 2.5 Execution & Scheduling
 
+### 1. Barrier Generation 生成
+
+Automatic barrier insertion between passes:
+
+```cpp
+struct ResourceBarrier {
+    GPUResource* resource;
+    ResourceState before;   // e.g., RENDER_TARGET
+    ResourceState after;    // e.g., SHADER_RESOURCE
+    uint32_t subresource;   // Mip/slice level
+};
+
+void GenerateBarriers(const ExecutionOrder& order) {
+    std::unordered_map<RDGResource*, ResourceState> currentStates;
+    
+    for (auto& pass : order) {
+        std::vector<ResourceBarrier> barriers;
+        
+        for (auto& [resource, requiredState] : pass.resourceAccesses) {
+            ResourceState currentState = currentStates[resource];
+            
+            if (currentState != requiredState) {
+                barriers.push_back({
+                    resource->GetGPUResource(),
+                    currentState,
+                    requiredState
+                });
+                currentStates[resource] = requiredState;
+            }
+        }
+        
+        if (!barriers.empty()) {
+            pass.preBarriers = std::move(barriers);
+        }
+    }
+}
+```
+
+### 2. Barrier Batching 合批
+
+Barriers are batched for efficiency:
+
+```
+Before batching:
+  Barrier(ResA: SRV → UAV)
+  Dispatch()
+  Barrier(ResB: RTV → SRV)
+  Barrier(ResC: RTV → SRV)
+  DrawCall()
+
+After batching:
+  Barrier(ResA: SRV → UAV)
+  Dispatch()
+  BatchedBarrier(ResB: RTV → SRV, ResC: RTV → SRV)  // Single API call
+  DrawCall()
+```
+
+### 3. Async Compute Scheduling
+
+```
+Graphics Queue:  [Shadow] ──→ [GBuffer] ──→ [Lighting] ──→ [PostProcess]
+                                  │              ↑
+                                  │    ┌─────────┘
+                                  ▼    │
+Async Compute:              [SSAO Compute] ──→ [SSAO Blur]
+                            (fence signal)     (fence wait)
+```
+
+Async compute passes are scheduled on a separate queue with fence synchronization:
+
+```cpp
+void ScheduleAsyncCompute(ExecutionPlan& plan) {
+    for (auto& pass : plan.passes) {
+        if (pass.flags & ERDGPassFlags::AsyncCompute) {
+            // Find the latest graphics dependency
+            auto graphicsDep = FindLatestGraphicsDependency(pass);
+            
+            // Insert fence after graphics dependency
+            plan.InsertFence(graphicsDep, FenceType::GraphicsToCompute);
+            
+            // Find the earliest graphics consumer
+            auto graphicsConsumer = FindEarliestGraphicsConsumer(pass);
+            
+            // Insert wait before graphics consumer
+            plan.InsertWait(graphicsConsumer, FenceType::ComputeToGraphics);
+            
+            // Move pass to async compute queue
+            plan.MoveToAsyncQueue(pass);
+        }
+    }
+}
+```
+
+### 4. Parallel Command Recording
+
+The graph enables parallel command buffer recording:
+
+```cpp
+void ExecuteGraph(const ExecutionPlan& plan) {
+    // Group passes into independent batches
+    auto batches = plan.GetParallelBatches();
+    
+    std::vector<CommandBuffer*> commandBuffers;
+    
+    // Record each batch in parallel
+    parallel_for(batches, [&](const PassBatch& batch) {
+        CommandBuffer* cmd = AllocateSecondaryCommandBuffer();
+        
+        for (auto& pass : batch.passes) {
+            InsertBarriers(cmd, pass.preBarriers);
+            pass.Execute(cmd);
+        }
+        
+        commandBuffers.push_back(cmd);
+    });
+    
+    // Submit all command buffers
+    primaryCommandBuffer->ExecuteSecondary(commandBuffers);
+    queue->Submit(primaryCommandBuffer);
+}
+```
+
+
+### 5. Builder Execute
+
 收集Pass（AddPass）、编译渲染图之后，便可以**执行渲染图**了，由FRDGBuilder::Execute承担
 ```c++
 void FRDGBuilder::Execute()
@@ -740,129 +903,196 @@ void FRDGBuilder::Execute()
 }
 ```
 
-### 1. Barrier Generation 生成
+### 6. Execute Pass
 
-Automatic barrier insertion between passes:
+- **3个步骤：**
+  1. prologue
+  2. pass主体
+  3. epilogue
+- 执行期间
+   1. 先编译所有Pass，然后依次执行Pass的前序、主体和后续，相当于将命令队列的BeginRenderPass、执行渲染代码、EndRenderPass分散在它们之间。
+   2. Pass执行主体实际很简单，就是调用该Pass的Lambda实例，传入使用的命令队列实例
 
-```cpp
-struct ResourceBarrier {
-    GPUResource* resource;
-    ResourceState before;   // e.g., RENDER_TARGET
-    ResourceState after;    // e.g., SHADER_RESOURCE
-    uint32_t subresource;   // Mip/slice level
-};
-
-void GenerateBarriers(const ExecutionOrder& order) {
-    std::unordered_map<RDGResource*, ResourceState> currentStates;
-    
-    for (auto& pass : order) {
-        std::vector<ResourceBarrier> barriers;
-        
-        for (auto& [resource, requiredState] : pass.resourceAccesses) {
-            ResourceState currentState = currentStates[resource];
-            
-            if (currentState != requiredState) {
-                barriers.push_back({
-                    resource->GetGPUResource(),
-                    currentState,
-                    requiredState
-                });
-                currentStates[resource] = requiredState;
-            }
-        }
-        
-        if (!barriers.empty()) {
-            pass.preBarriers = std::move(barriers);
-        }
+```c++
+// 1. prologue
+void FRDGBuilder::ExecutePassPrologue(FRHIComputeCommandList& RHICmdListPass, FRDGPass* Pass)
+{
+    // 提交前序开始屏障.
+    if (Pass->PrologueBarriersToBegin)
+    {
+        Pass->PrologueBarriersToBegin->Submit(RHICmdListPass);
     }
-}
-```
 
-### 2. Barrier Batching 合批
-
-Barriers are batched for efficiency:
-
-```
-Before batching:
-  Barrier(ResA: SRV → UAV)
-  Dispatch()
-  Barrier(ResB: RTV → SRV)
-  Barrier(ResC: RTV → SRV)
-  DrawCall()
-
-After batching:
-  Barrier(ResA: SRV → UAV)
-  Dispatch()
-  BatchedBarrier(ResB: RTV → SRV, ResC: RTV → SRV)  // Single API call
-  DrawCall()
-```
-
-### 3. Async Compute Scheduling
-
-```
-Graphics Queue:  [Shadow] ──→ [GBuffer] ──→ [Lighting] ──→ [PostProcess]
-                                  │              ↑
-                                  │    ┌─────────┘
-                                  ▼    │
-Async Compute:              [SSAO Compute] ──→ [SSAO Blur]
-                            (fence signal)     (fence wait)
-```
-
-Async compute passes are scheduled on a separate queue with fence synchronization:
-
-```cpp
-void ScheduleAsyncCompute(ExecutionPlan& plan) {
-    for (auto& pass : plan.passes) {
-        if (pass.flags & ERDGPassFlags::AsyncCompute) {
-            // Find the latest graphics dependency
-            auto graphicsDep = FindLatestGraphicsDependency(pass);
-            
-            // Insert fence after graphics dependency
-            plan.InsertFence(graphicsDep, FenceType::GraphicsToCompute);
-            
-            // Find the earliest graphics consumer
-            auto graphicsConsumer = FindEarliestGraphicsConsumer(pass);
-            
-            // Insert wait before graphics consumer
-            plan.InsertWait(graphicsConsumer, FenceType::ComputeToGraphics);
-            
-            // Move pass to async compute queue
-            plan.MoveToAsyncQueue(pass);
-        }
+    // 提交前序结束屏障.
+    if (Pass->PrologueBarriersToEnd)
+    {
+        Pass->PrologueBarriersToEnd->Submit(RHICmdListPass);
     }
-}
-```
 
-### 4. Parallel Command Recording
-
-The graph enables parallel command buffer recording:
-
-```cpp
-void ExecuteGraph(const ExecutionPlan& plan) {
-    // Group passes into independent batches
-    auto batches = plan.GetParallelBatches();
-    
-    std::vector<CommandBuffer*> commandBuffers;
-    
-    // Record each batch in parallel
-    parallel_for(batches, [&](const PassBatch& batch) {
-        CommandBuffer* cmd = AllocateSecondaryCommandBuffer();
-        
-        for (auto& pass : batch.passes) {
-            InsertBarriers(cmd, pass.preBarriers);
-            pass.Execute(cmd);
-        }
-        
-        commandBuffers.push_back(cmd);
+    // 由于访问检查将允许在RDG资源上调用GetRHI，所以在第一次使用时将初始化统一缓冲区.
+    Pass->GetParameters().EnumerateUniformBuffers([&](FRDGUniformBufferRef UniformBuffer)
+    {
+        BeginResourceRHI(UniformBuffer);
     });
-    
-    // Submit all command buffers
-    primaryCommandBuffer->ExecuteSecondary(commandBuffers);
-    queue->Submit(primaryCommandBuffer);
+
+    // 设置异步计算预算(Budget).
+    if (Pass->GetPipeline() == ERHIPipeline::AsyncCompute)
+    {
+        RHICmdListPass.SetAsyncComputeBudget(Pass->AsyncComputeBudget);
+    }
+
+    const ERDGPassFlags PassFlags = Pass->GetFlags();
+
+    if (EnumHasAnyFlags(PassFlags, ERDGPassFlags::Raster))
+    {
+        if (!EnumHasAnyFlags(PassFlags, ERDGPassFlags::SkipRenderPass) && !Pass->SkipRenderPassBegin())
+        {
+            // 调用命令队列的BeginRenderPass接口.
+            static_cast<FRHICommandList&>(RHICmdListPass).BeginRenderPass(Pass->GetParameters().GetRenderPassInfo(), Pass->GetName());
+        }
+    }
+}
+
+// 2. pass主体
+void FRDGPass::Execute(FRHIComputeCommandList& RHICmdList)
+{
+    QUICK_SCOPE_CYCLE_COUNTER(STAT_FRDGPass_Execute);
+    // 设置统一缓冲区.
+    RHICmdList.SetGlobalUniformBuffers(ParameterStruct.GetGlobalUniformBuffers());
+    // 执行Pass的实现.
+    ExecuteImpl(RHICmdList);
+}
+
+void TRDGLambdaPass::ExecuteImpl(FRHIComputeCommandList& RHICmdList) override
+{
+    // 执行Lambda.
+    ExecuteLambda(static_cast<TRHICommandList&>(RHICmdList));
+}
+
+// 3. epilogue
+void FRDGBuilder::ExecutePassEpilogue(FRHIComputeCommandList& RHICmdListPass, FRDGPass* Pass)
+{
+    QUICK_SCOPE_CYCLE_COUNTER(STAT_FRDGBuilder_ExecutePassEpilogue);
+
+    const ERDGPassFlags PassFlags = Pass->GetFlags();
+
+    // 调用命令队列的EndRenderPass.
+    if (EnumHasAnyFlags(PassFlags, ERDGPassFlags::Raster) && !EnumHasAnyFlags(PassFlags, ERDGPassFlags::SkipRenderPass) && !Pass->SkipRenderPassEnd())
+    {
+        static_cast<FRHICommandList&>(RHICmdListPass).EndRenderPass();
+    }
+
+    // 放弃资源转换.
+    for (FRHITexture* Texture : Pass->TexturesToDiscard)
+    {
+        RHIDiscardTransientResource(Texture);
+    }
+
+    // 获取(Acquire)转换资源.
+    for (FRHITexture* Texture : Pass->TexturesToAcquire)
+    {
+        RHIAcquireTransientResource(Texture);
+    }
+
+    const FRDGParameterStruct PassParameters = Pass->GetParameters();
+
+    // 提交用于图形管线的尾声屏障.
+    if (Pass->EpilogueBarriersToBeginForGraphics)
+    {
+        Pass->EpilogueBarriersToBeginForGraphics->Submit(RHICmdListPass);
+    }
+
+    // 提交用于异步计算的尾声屏障.
+    if (Pass->EpilogueBarriersToBeginForAsyncCompute)
+    {
+        Pass->EpilogueBarriersToBeginForAsyncCompute->Submit(RHICmdListPass);
+    }
+}
+```
+
+```c++
+void FRDGBuilder::ExecutePass(FRDGPass* Pass)
+{
+    QUICK_SCOPE_CYCLE_COUNTER(STAT_FRDGBuilder_ExecutePass);
+    SCOPED_GPU_MASK(RHICmdList, Pass->GPUMask);
+    IF_RDG_CPU_SCOPES(CPUScopeStacks.BeginExecutePass(Pass));
+
+    // 使用GPU范围.
+#if RDG_GPU_SCOPES
+    const bool bUsePassEventScope = Pass != EpiloguePass && Pass != ProloguePass;
+    if (bUsePassEventScope)
+    {
+        GPUScopeStacks.BeginExecutePass(Pass);
+    }
+#endif
+
+#if WITH_MGPU
+    if (!bWaitedForTemporalEffect && NameForTemporalEffect != NAME_None)
+    {
+        RHICmdList.WaitForTemporalEffect(NameForTemporalEffect);
+        bWaitedForTemporalEffect = true;
+    }
+#endif
+
+    // 执行pass的顺序: 1.prologue -> 2.pass主体 -> 3.epilogue.
+    // 整个过程使用指定管道上的命令列表执行.
+    FRHIComputeCommandList& RHICmdListPass = (Pass->GetPipeline() == ERHIPipeline::AsyncCompute)
+        ? static_cast<FRHIComputeCommandList&>(RHICmdListAsyncCompute)
+        : RHICmdList;
+
+    // 1.执行prologue
+    ExecutePassPrologue(RHICmdListPass, Pass);
+
+    // 2.执行pass主体
+    Pass->Execute(RHICmdListPass);
+
+    // 3.执行epilogue
+    ExecutePassEpilogue(RHICmdListPass, Pass);
+
+#if RDG_GPU_SCOPES
+    if (bUsePassEventScope)
+    {
+        GPUScopeStacks.EndExecutePass(Pass);
+    }
+#endif
+
+    // 异步计算完成, 则立即派发.
+    if (Pass->bAsyncComputeEnd)
+    {
+        FRHIAsyncComputeCommandListImmediate::ImmediateDispatch(RHICmdListAsyncCompute);
+    }
+
+    // 如果是调试模式且非异步计算，则提交命令并刷新到GPU, 然后等待GPU处理完成.
+    if (GRDGDebugFlushGPU && !GRDGAsyncCompute)
+    {
+        RHICmdList.SubmitCommandsAndFlushGPU();
+        RHICmdList.BlockUntilGPUIdle();
+    }
 }
 ```
 
 
+### 7. Execute Clear
+
+```c++
+void FRDGBuilder::Clear()
+{
+    // 清理外部资源.
+    ExternalTextures.Empty();
+    ExternalBuffers.Empty();
+    // 清理提取资源.
+    ExtractedTextures.Empty();
+    ExtractedBuffers.Empty();
+    // 清理主体数据.
+    Passes.Clear();
+    Views.Clear();
+    Textures.Clear();
+    Buffers.Clear();
+    // 清理统一缓冲区和分配器.
+    UniformBuffers.Clear();
+    Allocator.ReleaseAll();
+}
+```
 
 ## 2.6 Directed Acyclic Graph (DAG)
 
