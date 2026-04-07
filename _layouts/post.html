@@ -226,3 +226,24 @@ layout: default
     }
 </style>
 {% endif %}
+
+<!-- Mermaid.js support -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+<script>
+    // Initialize Mermaid
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'default',
+        flowchart: {
+            useMaxWidth: false,
+            htmlLabels: true,
+            curve: 'basis'
+        },
+        securityLevel: 'loose'
+    });
+    
+    // Add support for Jekyll's async content loading
+    document.addEventListener('DOMContentLoaded', function() {
+        mermaid.init(undefined, '.language-mermaid');
+    });
+</script>
