@@ -16,7 +16,7 @@ tags:
 # <center> Overview</center>
 
 ```
-1. Base             |
+1. Overview             |
                     |   Three Threads
                     |       → Game Thread (GT)
                     |           → ENQUEUE_RENDER_COMMAND
@@ -30,13 +30,62 @@ tags:
                     |   → Pass
 2. RDGEngine        |
                     |   → Compiile
-                    |   → Excute
-                    |   → Pass
+                    |   → Execution & Scheduling
+                    |   → Pass System
                     |
 ```
 
-Overview
+# Overview
 
+## High-Level Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    Application Layer                     │
+│         (Game Logic, Scene Management, Culling)          │
+└──────────────────────┬───────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│                  RDG Builder / Setup Phase              │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐               │
+│  │ Pass A   │  │ Pass B   │  │ Pass C   │  ...          │
+│  │ (Shadow) │  │ (GBuffer)│  │ (Light)  │               │
+│  └──────────┘  └──────────┘  └──────────┘               │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│                  Compile Phase                          │
+│  ┌────────────────┐  ┌────────────────┐                 │
+│  │ Dependency     │  │ Resource       │                 │
+│  │ Resolution     │  │ Lifetime Calc  │                 │
+│  └────────────────┘  └────────────────┘                 │
+│  ┌────────────────┐  ┌────────────────┐                 │
+│  │ Dead Pass      │  │ Barrier        │                 │
+│  │ Culling        │  │ Generation     │                 │
+│  └────────────────┘  └────────────────┘                 │
+│  ┌────────────────┐                                     │
+│  │ Memory Aliasing│                                     │
+│  │ & Allocation   │                                     │
+│  └────────────────┘                                     │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│                  Execute Phase                          │
+│  ┌────────────────┐  ┌────────────────┐                 │
+│  │ Command Buffer │  │ GPU Resource   │                 │
+│  │ Recording      │  │ Instantiation  │                 │
+│  └────────────────┘  └────────────────┘                 │
+│  ┌────────────────┐                                     │
+│  │ Queue Submit   │                                     │
+│  └────────────────┘                                     │
+└─────────────────────────────────────────────────────────┘
+```
+
+
+## Summary
 Rendering Dependency Graph，渲染依赖性图表
 
 - 基于有向无环图(Directed Acyclic Graph，DAG)的调度系统，用于执行渲染管线的整帧优化
@@ -56,3 +105,95 @@ Rendering Dependency Graph，渲染依赖性图表
 - FrameGraph是高层级的Render Pass和资源的代表，包含了一帧中所用到的所有信息
 - UE的RDG正是基于Frame Graph之上定制和实现而成的
 - RDG已经被大量普及，包含场景渲染、后处理、光追等等模块都使用了RDG代替原本直接调用RHI命令的方式
+
+# What is a Rendering Dependency Graph?
+
+A **Rendering Dependency Graph (RDG)**, also known as a **Frame Graph** or **Render Graph**, is a high-level abstraction layer for organizing and executing rendering operations in a modern graphics pipeline. It models the entire frame's rendering workload as a **Directed Acyclic Graph (DAG)**, where:
+
+- **Nodes** represent rendering passes (compute, raster, copy, etc.)
+- **Edges** represent resource dependencies between passes
+
+The framework automatically handles:
+- Resource allocation and deallocation (transient resources)
+- Execution ordering based on dependencies
+- Synchronization barriers (pipeline barriers, layout transitions)
+- Dead code elimination (culling unused passes)
+- Resource aliasing and memory optimization
+
+# Why Use a Rendering Dependency Graph? 为什么使用RDG？
+
+| Problem (Traditional)               | Solution (RDG)                           |
+| ----------------------------------- | ---------------------------------------- |
+| Manual resource lifetime management | Automatic transient resource allocation  |
+| Hardcoded render pass ordering      | Automatic dependency-driven scheduling   |
+| Manual barrier/transition insertion | Automatic synchronization                |
+| Difficult to add/remove features    | Modular pass-based architecture          |
+| Wasted GPU memory                   | Resource aliasing & memory pooling       |
+| Hard to parallelize CPU work        | Graph enables parallel command recording |
+
+## Directed Acyclic Graph (DAG)
+
+The rendering dependency graph is fundamentally a DAG: RDG本事是一个有向无环图
+
+```
+[Shadow Map Pass] ──→ [GBuffer Pass] ──→ [Lighting Pass] ──→ [Post Process] ──→ [UI Overlay]
+        │                                       ↑                    ↑
+        └───────────────────────────────────────┘                    │
+[SSAO Pass] ─────────────────────────────────────────────────────────┘
+```
+
+- **No cycles allowed** — a pass cannot depend on its own output
+- **Multiple roots** — the graph can have multiple entry points
+- **Single or multiple sinks** — typically ends at the final present/swap chain
+
+
+## Passes
+
+A **Pass** is the fundamental unit of work:
+
+```cpp
+struct RenderPass {
+    std::string name;
+    PassType type;              // Raster, Compute, Copy, AsyncCompute
+    std::vector<ResourceRef> inputs;
+    std::vector<ResourceRef> outputs;
+    ExecuteCallback execute;    // Lambda containing actual GPU commands
+};
+```
+
+Pass types:
+- **Raster Pass**: Traditional draw calls with render targets
+- **Compute Pass**: Dispatch compute shaders
+- **Copy/Transfer Pass**: Resource copies, uploads, readbacks
+- **Async Compute Pass**: Runs on async compute queue
+
+## Resources
+
+Resources in RDG are **virtual handles** until execution:
+
+```cpp
+struct RDGResource {
+    std::string name;
+    ResourceDesc desc;          // Texture/Buffer description
+    bool isExternal;            // Imported or transient
+    bool isTransient;           // Managed by the graph
+    ResourceLifetime lifetime;  // First use → last use
+};
+```
+
+Resource categories:
+- **Transient Resources**: Created and destroyed within a single frame
+- **External/Imported Resources**: Persist across frames (e.g., swap chain, history buffers)
+- **Extracted Resources**: Transient resources promoted to persist beyond the frame
+
+## 2.4 Resource Views
+
+Resources are accessed through typed views:
+
+| View Type                     | Description                       |
+| ----------------------------- | --------------------------------- |
+| `SRV` (Shader Resource View)  | Read-only texture/buffer access   |
+| `UAV` (Unordered Access View) | Read-write access in compute      |
+| `RTV` (Render Target View)    | Write as color attachment         |
+| `DSV` (Depth Stencil View)    | Write as depth/stencil attachment |
+| `CBV` (Constant Buffer View)  | Uniform/constant buffer access    |
