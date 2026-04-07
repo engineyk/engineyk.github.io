@@ -1,0 +1,104 @@
+---
+layout:     post
+title:      Mermaid图表测试
+date:       2026-04-07
+author:     Test
+tags:
+    - 测试
+    - Mermaid
+---
+
+# Mermaid图表测试
+
+## 流程图示例
+
+```mermaid
+flowchart TD
+    A[开始] --> B{判断条件}
+    B -->|是| C[执行操作1]
+    B -->|否| D[执行操作2]
+    C --> E[结束]
+    D --> E
+```
+
+## 序列图示例
+
+```mermaid
+sequenceDiagram
+    participant 用户
+    participant 服务器
+    participant 数据库
+    
+    用户->>服务器: 登录请求
+    服务器->>数据库: 验证用户
+    数据库-->>服务器: 验证结果
+    服务器-->>用户: 登录响应
+```
+
+## 类图示例
+
+```mermaid
+classDiagram
+    class Animal {
+        +String name
+        +void eat()
+        +void sleep()
+    }
+    class Dog {
+        +void bark()
+    }
+    class Cat {
+        +void meow()
+    }
+    
+    Animal <|-- Dog
+    Animal <|-- Cat
+```
+
+## 甘特图示例
+
+```mermaid
+gantt
+    title 项目时间表
+    dateFormat  YYYY-MM-DD
+    section 设计
+    需求分析      :done,    des1, 2026-04-01, 2026-04-05
+    系统设计      :active,  des2, 2026-04-06, 2026-04-10
+    section 开发
+    前端开发      :         dev1, 2026-04-11, 2026-04-20
+    后端开发      :         dev2, 2026-04-11, 2026-04-25
+```
+
+## 饼图示例
+
+```mermaid
+pie title 编程语言使用比例
+    "JavaScript" : 45
+    "Python" : 25
+    "Java" : 15
+    "其他" : 15
+```
+
+## 状态图示例
+
+```mermaid
+stateDiagram-v2
+    [*] --> 待处理
+    待处理 --> 进行中: 开始处理
+    进行中 --> 已完成: 完成
+    进行中 --> 待处理: 暂停
+    已完成 --> [*]
+```
+
+## 使用说明
+
+在Markdown中使用Mermaid图表，只需将图表代码包裹在\`\`\`mermaid代码块中即可。
+
+支持的图表类型包括：
+- 流程图 (flowchart)
+- 序列图 (sequenceDiagram) 
+- 类图 (classDiagram)
+- 甘特图 (gantt)
+- 饼图 (pie)
+- 状态图 (stateDiagram)
+- 等等...
