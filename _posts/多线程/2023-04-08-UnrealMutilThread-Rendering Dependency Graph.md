@@ -439,7 +439,7 @@ FRDGPassRef FRDGBuilder::AddPass(FRDGEventName&& Name, const ParameterStructType
 RDG Pass模块涉及了屏障、资源转换、RDGPass等概念：
 RDG Pass和渲染Pass并非一一对应关系，有可能多个合并成一个渲染Pass，详见后面章节。RDG Pass最复杂莫过于多线程处理、资源状态转换以及依赖处理，不过本节先不涉及
 
-[RDG Pass](<RDG/RDG Pass.md>)
+[RDG Pass](<../../code/RDG/RDG Pass.md>)
 
 ---
 
@@ -1122,5 +1122,58 @@ The rendering dependency graph is fundamentally a DAG: RDG 是一个有向无环
   - 查找并建立分叉和合并Pass节点
   - 合并所有具体相同渲染目标的光栅化Pass等步骤
 
-[Compile](<RDG/Compile.cpp>)
-[Compile.cpp](RDG/Compile.cpp)
+[Compile](../../code/RDG/Compile.cpp)
+
+
+# 三. Implementation
+### 11.1 Traditional Immediate Mode Rendering
+
+```cpp
+// Traditional: Manual, error-prone, hard to maintain
+void RenderFrame_Traditional() {
+    // Must manually track resource states
+    shadowMap->TransitionTo(DEPTH_WRITE);
+    RenderShadows();
+    
+    shadowMap->TransitionTo(SHADER_READ);  // Easy to forget!
+    gbuffer->TransitionTo(RENDER_TARGET);
+    RenderGBuffer();
+    
+    gbuffer->TransitionTo(SHADER_READ);
+    sceneColor->TransitionTo(RENDER_TARGET);
+    RenderLighting();
+    
+    // Must manually manage resource lifetimes
+    // Must manually handle async compute sync
+    // Cannot easily reorder or cull passes
+}
+```
+
+### 11.2 RDG Approach
+
+```cpp
+// RDG: Declarative, automatic, maintainable
+void RenderFrame_RDG(RDGBuilder& builder) {
+    auto shadowMap = AddShadowPass(builder, ...);
+    auto [gbufferA, gbufferB, depth] = AddGBufferPass(builder, ...);
+    auto sceneColor = AddLightingPass(builder, shadowMap, gbufferA, gbufferB, depth);
+    // Barriers, lifetimes, ordering — all automatic!
+}
+```
+
+### 11.3 Feature Comparison
+
+| Feature               | Traditional         | RDG                   |
+| --------------------- | ------------------- | --------------------- |
+| Resource Barriers     | Manual              | Automatic             |
+| Resource Lifetimes    | Manual              | Automatic             |
+| Pass Ordering         | Hardcoded           | Dependency-driven     |
+| Dead Code Elimination | None                | Automatic             |
+| Memory Aliasing       | Manual              | Automatic             |
+| Async Compute         | Complex manual sync | Declarative           |
+| Debugging             | Difficult           | Graph visualization   |
+| Feature Toggle        | Rewrite pipeline    | Remove pass           |
+| CPU Parallelism       | Manual threading    | Graph-driven batching |
+| Render Pass Merging   | Manual              | Automatic             |
+
+---
