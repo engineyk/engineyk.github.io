@@ -2,7 +2,7 @@
 layout:     post
 title:      Unreal Multi-Thread Rendering Dependency Graph
 subtitle:   UE multi-thread rendering architecture and pipeline
-date:       2023-4-7
+date:       2023-4-8
 author:     kang
 header-img: img/post-bg-ocenwar.jpg
 catalog: true
