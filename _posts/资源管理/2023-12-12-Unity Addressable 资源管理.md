@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      Unity 资源管理
+title:      Unity Addressable 资源管理
 subtitle:   Unity
 date:       2023-12-12
 author:     kang
@@ -11,7 +11,7 @@ tags:
 ---
 
 
-# <center>Unity 资源管理<center>
+# <center>Unity Addressable 资源管理<center>
 
 ---
 
