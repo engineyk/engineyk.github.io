@@ -20,34 +20,34 @@ tags:
                             |   Pipeline
                             |   What && How && Why
                             |
-3. RDGEngine                |
-                            |   → Builder ： 心脏和发动机，大管家，负责收集渲染Pass和参数，编译Pass、数据，处理资源依赖，裁剪和优化各类数据，还有提供执行接口
+2. RDGEngine                |
+                            |   → 2.1 Builder ： 心脏和发动机，大管家，负责收集渲染Pass和参数，编译Pass、数据，处理资源依赖，裁剪和优化各类数据，还有提供执行接口
                             |       → RDGBuilder Pattern: 构建参数 AddPass
-                            |   → Pass System
+                            |   → 2.2 Pass System
                             |       → Pass Types
                             |       → Pass Declaration 单个Pass
                             |       → Connecting Pass 多个Pass连接
                             |       → Pass Execution
                             |       → Pass Merging
-                            |   → Resouces Management
+                            |   → 2.3 Resouces Management
                             |       → Transient Resource Pool
                             |       → Resource Lifetime Tracking
                             |       → Memory Aliasing
                             |       → External vs Transient Resources
-                            |   → Dependency Resolution
+                            |   → 2.4 Dependency Resolution
                             |       → Implicit Dependencies
                             |       → Dependency Graph Construction Algorith
                             |       → Topological Sort for Execution Order
                             |       → Dead Pass Culling
-                            |   → Execution & Scheduling
+                            |   → 2.5 Execution & Scheduling
                             |       → Barrier Generation
                             |       → Barrier Batching
                             |       → Async Compute Scheduling
                             |       → Parallel Command Recording
-4. Optimization Strategies  |
+3. Optimization Strategies  |
                             |   → Dev
                             |   → Compiile
-5. Implementation           |
+4. Implementation           |
                             |   → Traditional Immediate Mode Rendering
                             |   → RDG Approach
                             |   → Feature Comparison
@@ -55,7 +55,7 @@ tags:
 6.                 |
 ```
 
-# Overview
+# 一. Overview
 
 ## Pipeline
 
@@ -176,10 +176,9 @@ The framework automatically handles:
 | r.RDG.VerboseCSVStats         | 控制RDG的CSV分析统计的详细程度。0-为图形执行生成一个CSV配置文件，1-为图形执行的每个阶段生成一个CSV文件。             |
 
 
-# RDGEngine
+# 二. RDGEngine
 
----
-## Builder
+## 2.1 Builder
 
 ### Builder Pattern
 **The graph is constructed using a builder pattern:**
@@ -218,7 +217,7 @@ public:
 
 ---
 
-## Pass System
+## 2.2 Pass System
 
 ### Pass Types
 
@@ -384,7 +383,7 @@ END_SHADER_PARAMETER_STRUCT()
 
 ---
 
-## Resouces Management 资源管理
+## 2.3 Resouces Management 资源管理
 
 ### Transient Resource Pool
 
@@ -474,7 +473,7 @@ builder.QueueExtraction(historyBuffer, &savedHistoryBuffer);
 
 ---
 
-## Dependency Resolution
+## 2.4 Dependency Resolution
 ### Implicit Dependencies
 
 Dependencies are inferred from resource usage:
@@ -565,7 +564,7 @@ def cull_unused_passes(graph, required_outputs):
 
 
 
-## Execution & Scheduling
+## 2.5 Execution & Scheduling
 
 ### Barrier Generation
 
