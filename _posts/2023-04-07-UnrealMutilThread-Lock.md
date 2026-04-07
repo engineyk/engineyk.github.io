@@ -13,36 +13,6 @@ tags:
 <center> Unreal Multi-Thread Lock </center>
 
 
-# <center> Overview</center>
-
-```
-1. Guide            |
-                    |   Three Threads
-                    |       → Game Thread (GT)
-                    |           → ENQUEUE_RENDER_COMMAND
-                    |       → Render Thread (RT)
-                    |       → RHI Thread
-                    |   Thread Data Flow
-                    |
-2. Frame Pipeline   |
-                    |   → Frame N: GT prepares scene
-                    |   → Frame N-1: RT generates commands
-                    |   → Frame N-2: RHI submits to GPU
-                    |
-3. Synchronization  |
-                    |   → FRenderCommandFence
-                    |   → FFrameEndSync
-                    |   → TaskGraph
-                    |
-4. Key Mechanisms   |
-                    |   → ENQUEUE_RENDER_COMMAND
-                    |   → FRenderCommandFence
-                    |   → Parallel Command List
-                    |   → RHI Command List
-```
-
----
-
 # Lock Selection Guide
 
 ```
