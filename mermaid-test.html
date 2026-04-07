@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid测试页面</title>
+    <!-- Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: false,
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            securityLevel: 'loose'
+        });
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .mermaid {
+            margin: 20px 0;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mermaid图表测试</h1>
+    
+    <h2>流程图示例</h2>
+    <div class="mermaid">
+flowchart TD
+    A[开始] --> B{判断条件}
+    B -->|是| C[执行操作1]
+    B -->|否| D[执行操作2]
+    C --> E[结束]
+    D --> E
+    </div>
+
+    <h2>序列图示例</h2>
+    <div class="mermaid">
+sequenceDiagram
+    participant 用户
+    participant 服务器
+    participant 数据库
+    
+    用户->>服务器: 登录请求
+    服务器->>数据库: 验证用户
+    数据库-->>服务器: 验证结果
+    服务器-->>用户: 登录响应
+    </div>
+
+    <h2>类图示例</h2>
+    <div class="mermaid">
+classDiagram
+    class Animal {
+        +String name
+        +void eat()
+        +void sleep()
+    }
+    class Dog {
+        +void bark()
+    }
+    class Cat {
+        +void meow()
+    }
+    
+    Animal <|-- Dog
+    Animal <|-- Cat
+    </div>
+
+    <h2>甘特图示例</h2>
+    <div class="mermaid">
+gantt
+    title 项目时间表
+    dateFormat  YYYY-MM-DD
+    section 设计
+    需求分析      :done,    des1, 2026-04-01, 2026-04-05
+    系统设计      :active,  des2, 2026-04-06, 2026-04-10
+    section 开发
+    前端开发      :         dev1, 2026-04-11, 2026-04-20
+    后端开发      :         dev2, 2026-04-11, 2026-04-25
+    </div>
+
+    <h2>使用说明</h2>
+    <p>在Jekyll中使用Mermaid图表，只需将图表代码包裹在<code>```mermaid</code>代码块中即可。</p>
+    
+    <p>我已经在<code>_layouts/post.html</code>中添加了Mermaid支持，您现在可以在博客文章中使用Mermaid图表了。</p>
+</body>
+</html>
