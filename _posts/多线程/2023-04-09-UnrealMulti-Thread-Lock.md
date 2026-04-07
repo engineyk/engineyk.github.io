@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      Unreal Multi-Thread Lock
-subtitle:   UE multi-thread rendering architecture and pipeline
+title:      Unreal Multi Thread Lock
+subtitle:   UE multi thread rendering architecture and pipeline
 date:       2023-4-9
 author:     kang
 header-img: img/post-bg-ocenwar.jpg
