@@ -81,10 +81,13 @@ AActor
 
 ## 三、APawn / ACharacter 继承链
 
-```
-AActor
-  └── APawn
-        └── ACharacter
+```mermaid
+graph TD
+    AActor --> APawn
+    APawn --> ACharacter
+    ACharacter --> UCharacterMovementComponent[UCharacterMovementComponent 角色移动组件]
+    ACharacter --> UCapsuleComponent[UCapsuleComponent 胶囊碰撞体]
+    ACharacter --> USkeletalMeshComponent[USkeletalMeshComponent 骨骼网格体]
 ```
 
 ### 3.1 ACharacter
@@ -102,11 +105,14 @@ AActor
 
 ## 四、AController 体系
 
-```
-AActor
-  └── AController
-        ├── APlayerController
-        └── AAIController
+```mermaid
+graph TD
+    AActor --> AController
+    AController --> APlayerController
+    AController --> AAIController
+    APlayerController --> APlayerCameraManager2[APlayerCameraManager 摄像机管理器]
+    APlayerController --> UInputComponent[UInputComponent 输入组件]
+    AAIController --> UBehaviorTreeComponent[UBehaviorTreeComponent 行为树组件]
 ```
 
 ### 4.1 AController
@@ -139,11 +145,14 @@ AActor
 
 ## 五、AInfo 体系
 
-```
-AActor
-  └── AInfo                    // 非物理 Actor 基类（bHidden=true）
-        ├── AGameModeBase
-        └── AGameStateBase
+```mermaid
+graph TD
+    AActor --> AInfo[AInfo 非物理Actor基类]
+    AInfo --> AGameModeBase
+    AInfo --> AGameStateBase
+    AGameModeBase --> PlayerControllerClass[PlayerControllerClass 玩家控制器类]
+    AGameModeBase --> DefaultPawnClass[DefaultPawnClass 默认Pawn类]
+    AGameStateBase --> PlayerArray[PlayerArray 玩家状态列表]
 ```
 
 ### 5.1 AInfo
