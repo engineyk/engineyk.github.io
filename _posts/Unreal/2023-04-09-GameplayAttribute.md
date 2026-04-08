@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      GameplayAttribute
-subtitle:   Unreal GameplayAttribute
+title:      Gameplay Attribute
+subtitle:   Unreal Gameplay Attribute
 date:       2023-04-09
 author:     kang
 header-img: img/post-bg-ocenwar.jpg
@@ -1416,10 +1416,3 @@ Gameplay Debugger:
 │ UI 更新                      │ GetGameplayAttributeValueChangeDelegate│
 └──────────────────────────────┴────────────────────────────────────────┘
 ```
-
----
-
-> **Document Version:** 1.0  
-> **Engine Version:** Unreal Engine 5.x  
-> **Last Updated:** 2026-03-26  
-> **Tags:** `GAS` `GameplayAttribute` `AttributeSet` `GameplayEffect` `Modifier` `ExecCalc`
