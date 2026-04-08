@@ -1,11 +1,13 @@
 ---
 layout:     post
 title:      Mermaid图表测试
-date:       2026-04-07
-author:     Test
+subtitle:   Mermaid图表测试
+date:       2022-4-5
+author:     kang
+header-img: img/post-bg-ocenwar.jpg
+catalog: true
 tags:
-    - 测试
-    - Mermaid
+    - 工具
 ---
 
 # Mermaid图表测试
