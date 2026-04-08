@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      Gameplay Attribute
-subtitle:   Unreal Gameplay Attribute
+subtitle:   表示角色可量化属性的数据结构。它是技能系统与角色状态之间的桥梁。
 date:       2023-04-09
 author:     kang
 header-img: img/post-bg-ocenwar.jpg
