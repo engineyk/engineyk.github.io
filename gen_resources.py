@@ -1,6 +1,7 @@
 # _posts/
 # ├── 渲染类/                    → <h3>渲染类</h3>
-# │   ├── 2022-03-04-PBR.md     →   <li><a href="/2022/03/04/PBR">PBR</a></li>
+# │   ├── PBR/                  →   <h4>PBR</h4>
+# │   │   └── 2022-03-04-PBR.md →     <li><a href="/2022/03/04/PBR">PBR</a></li>
 # │   └── 2023-08-10-URP.md     →   <li><a href="/2023/08/10/URP">URP</a></li>
 # ├── Unreal Game Play/
 # │   └── 2023-04-09-GAS.md
@@ -83,42 +84,37 @@ def parse_post_file(filepath: Path):
 
 def scan_posts(posts_dir: str):
     """
-    Scan posts directory.
-    Returns: dict { category_name: [ (title, url, date), ... ] }
-    Uncategorized files (directly in _posts root) go to 'Other' category.
+    Scan posts directory recursively, build a tree structure.
+    Returns a tree node dict:
+    {
+        'files': [(title, url, date), ...],   # files directly in this dir
+        'children': {                          # subdirectories
+            'subdir_name': { 'files': [...], 'children': {...} },
+            ...
+        }
+    }
     """
     root = Path(posts_dir)
-    categories = {}
-    root_files = []
 
     if not root.exists():
         print(f"[ERROR] Directory not found: {posts_dir}")
-        return categories
+        return {'files': [], 'children': {}}
 
-    for item in sorted(root.iterdir()):
-        if item.is_dir():
-            # Subdirectory as category
-            cat_name = item.name
-            files = []
-            for f in sorted(item.iterdir()):
-                if f.is_file() and f.suffix.lower() in ('.md', '.markdown', '.html'):
-                    title, url, date_str = parse_post_file(f)
-                    files.append((title, url, date_str))
-            if files:
-                categories[cat_name] = files
-        elif item.is_file() and item.suffix.lower() in ('.md', '.markdown', '.html'):
-            # Files directly in _posts root
-            title, url, date_str = parse_post_file(item)
-            root_files.append((title, url, date_str))
+    def scan_dir(directory: Path) -> dict:
+        """Recursively scan directory, return tree node."""
+        node = {'files': [], 'children': {}}
+        for item in sorted(directory.iterdir()):
+            if item.is_dir():
+                node['children'][item.name] = scan_dir(item)
+            elif item.is_file() and item.suffix.lower() in ('.md', '.markdown', '.html'):
+                title, url, date_str = parse_post_file(item)
+                node['files'].append((title, url, date_str))
+        return node
 
-    # Add root files as 'Other' category
-    if root_files:
-        categories['Other'] = root_files
-
-    return categories
+    return scan_dir(root)
 
 
-def generate_html(categories: dict) -> str:
+def generate_html(tree: dict) -> str:
     """
     Generate resources.html content based on existing template format.
     """
@@ -141,17 +137,59 @@ def generate_html(categories: dict) -> str:
     lines.append('    <p></p>')
     lines.append('        ')
 
-    toc_index = 0
-    for cat_name, files in categories.items():
-        lines.append(f'<h3 id="toc_{toc_index}">{cat_name}</h3>')
-        lines.append('')
-        lines.append('<ul>')
-        for title, url, date_str in files:
-            date_hint = f" <small>({date_str})</small>" if date_str else ""
-            lines.append(f'<li><a href="{url}">{title}</a>{date_hint}</li>')
-        lines.append('</ul>')
-        lines.append('')
-        toc_index += 1
+    toc_counter = [0]  # use list to allow mutation in nested function
+    h3_counter = [0]   # counter for top-level (depth=0) sections
+
+    # Chinese number labels for top-level sections
+    CN_NUMS = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十',
+               '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十']
+
+    # Heading tags by depth: depth=0 -> h3, depth=1 -> h4, depth>=2 -> h5
+    def heading_tag(depth):
+        tags = ['h3', 'h4', 'h5']
+        return tags[min(depth, len(tags) - 1)]
+
+    def render_node(node: dict, name: str = None, depth: int = 0):
+        """Recursively render tree node into HTML lines."""
+        # Render category heading (skip for root node)
+        if name is not None:
+            tag = heading_tag(depth)
+            indent = '    ' * (depth + 1)  # h3->4sp, h4->8sp, h5->12sp
+            if depth == 0:
+                # Add horizontal rule before each top-level section
+                lines.append(f'{indent}<hr>')
+                # Add Chinese number label
+                cn_num = CN_NUMS[h3_counter[0]] if h3_counter[0] < len(CN_NUMS) else str(h3_counter[0] + 1)
+                lines.append(f'{indent}<{tag} id="toc_{toc_counter[0]}">{cn_num}、{name}</{tag}>')
+                h3_counter[0] += 1
+            else:
+                lines.append(f'{indent}<{tag} id="toc_{toc_counter[0]}">{name}</{tag}>')
+            lines.append('')
+            toc_counter[0] += 1
+
+        # Render files directly in this node
+        if node['files']:
+            # ul indent: one level deeper than heading
+            ul_indent = '    ' * (depth + 2)
+            lines.append(f'{ul_indent}<ul>')
+            for title, url, date_str in node['files']:
+                date_hint = f" <small>({date_str})</small>" if date_str else ""
+                lines.append(f'{ul_indent}    <li><a href="{url}">{title}</a>{date_hint}</li>')
+            lines.append(f'{ul_indent}</ul>')
+            lines.append('')
+
+        # Render subdirectories recursively
+        for child_name, child_node in node['children'].items():
+            render_node(child_node, child_name, depth + 1)
+
+    # Render root-level files as 'Other'
+    if tree['files']:
+        other_node = {'files': tree['files'], 'children': {}}
+        render_node(other_node, 'Other', 0)
+
+    # Render top-level subdirectories
+    for cat_name, cat_node in tree['children'].items():
+        render_node(cat_node, cat_name, 0)
 
     lines.append('')
     lines.append('</div>')
@@ -204,19 +242,33 @@ def generate_html(categories: dict) -> str:
 
 def main():
     print(f"Scanning: {POSTS_DIR}")
-    categories = scan_posts(POSTS_DIR)
+    tree = scan_posts(POSTS_DIR)
 
-    if not categories:
+    total_files = 0
+    def count_files(node):
+        nonlocal total_files
+        total_files += len(node['files'])
+        for child in node['children'].values():
+            count_files(child)
+    count_files(tree)
+
+    if total_files == 0:
         print("[WARN] No posts found.")
         return
 
-    print(f"Found {len(categories)} categories:")
-    for cat, files in categories.items():
-        print(f"  [{cat}] {len(files)} files")
-        for title, url, date_str in files:
-            print(f"    - {title} ({date_str})")
+    def print_tree(node, name=None, indent=0):
+        prefix = '  ' * indent
+        if name:
+            print(f"{prefix}[{name}] {len(node['files'])} files")
+        for title, url, date_str in node['files']:
+            print(f"{prefix}  - {title} ({date_str})")
+        for child_name, child_node in node['children'].items():
+            print_tree(child_node, child_name, indent + 1)
 
-    html_content = generate_html(categories)
+    print(f"Found {total_files} posts:")
+    print_tree(tree)
+
+    html_content = generate_html(tree)
 
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
         f.write(html_content)
