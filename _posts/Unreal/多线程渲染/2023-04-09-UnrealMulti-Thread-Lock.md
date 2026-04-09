@@ -12,7 +12,6 @@ tags:
 
 <center> Unreal Multi-Thread Lock </center>
 
-
 ```        
 1. Overview                 |
                             |   Lock Selection Guide
@@ -36,17 +35,19 @@ tags:
                             |   → 线程资源管理
                             |       → 线程数量控制
                             |       → 资源释放
+                            |   → 同步机制对比
+                            |   → Lock Selection Guide
+                            |   
 2. Lock                     |
                             |   → 锁
                             |       → Mutex Lock            互斥锁 FCriticalSection
                             |       → Read-Write Lock       读写锁
                             |       →   Read Lock           读锁
                             |       →   Write Lock          写锁
-                            |       → 条件锁
-                            |       → 自旋锁
+                            |       → FSpinLock             自旋锁
                             |       → 递归锁
-                            |       → condition_variable    条件变量
-                            |       → atomic                原子操作
+                            |       → ConditionVariable     条件锁 条件变量
+                            |       → AtomicOperations      原子操作
                             |           → TAtomic
                             |           → std::atomic
                             |       → MemoryBarrier 内存屏障
@@ -69,54 +70,64 @@ tags:
 
 ## 锁机制和封锁协议
 
+- X锁：排它锁 也称为写锁
+- S锁：共享锁 也称为读锁
+
 ### 1. 三级封锁
 
-- 一级封锁协议	
-  - 事务T在修改数据R之前必须先对其加X锁，直到事务结束才释放。一级封锁协议可以防止丢失修改，并保证事务T是可恢复的。
-    即更新数据前先加写锁
-- 二级封锁协议	
+- 一级封锁协议(X锁,**丢失修改**)
+  - 事务T在修改数据R之前必须先对其加X锁，直到事务结束才释放。一级封锁协议可以防止**丢失修改**，并保证事务T是可恢复的。
+  - 即更新数据前先加写锁
+- 二级封锁协议(S锁,**防止读“脏”**)
   - 即在一级封锁协议的基础上，读数据先加读锁，读完立即释放读锁
-    可防止丢失修改，还可防止读“脏”数据
-    二级封锁协议是指，在一级封锁协议基础上增加事务T在读数据R之前必须先对其加S锁，读完后即可释放S锁。二级封锁协议除防止丢失修改，还可以进一步防止读“脏”数据。
-- 三级封锁协议 	
+  - 可防止丢失修改，还可**防止读“脏”**数据
+  - 二级封锁协议是指，在一级封锁协议基础上增加事务T在读数据R之前必须先对其加S锁，读完后即可释放S锁。二级封锁协议除防止丢失修改，还可以进一步**防止读“脏”**数据。
+- 三级封锁协议(S锁,**防止不可重复读**)
   - 即在一级封锁协议的基础上. 读数据先加读锁，等事务结束再释放读锁（与二级封锁协议释放时间点不同）
-    可防止丢失修改、读“脏”数据与数据不可重复读
-    三级封锁协议是指，在一级封锁协议基础上增加事务T在读数据R之前必须先对其加S锁，直到事务结束才释放。三级封锁协议除防止了丢失修改和读“脏”数据外，还可以进一步防止不可重复读。
+  - 可防止丢失修改、读“脏”数据与数据不可重复读
+  - 三级封锁协议是指，在一级封锁协议基础上增加事务T在读数据R之前必须先对其加S锁，直到事务结束才释放。三级封锁协议除防止了丢失修改和读“脏”数据外，还可以进一步**防止不可重复读**。
 
 ### 2. 两段锁协议
 
 可串行化，有可能发生死锁
-- 两段锁协议：
-  - 是指所有的事务必须分两个阶段对数据项加锁和解锁。即事务分两个阶段，
-  - 第一个阶段是获得封锁。事务可以获得任何数据项上的任何类型的锁，但是不能释放；
-  - 第二阶段是释放封锁，事务可以释放任何数据项上的任何类型的锁，但不能申请。
 
-### 3. 封锁协议
-- X锁：排它锁 也称为写锁
-- S锁：共享锁 也称为读锁
-  
+- 是指所有的事务必须分两个阶段对数据项加锁和解锁。即事务分两个阶段，
+- 第一个阶段是获得封锁。事务可以获得任何数据项上的任何类型的锁，但是不能释放；
+- 第二阶段是释放封锁，事务可以释放任何数据项上的任何类型的锁，但不能申请。
+
 ## 并发控制
 
 ### 1. 原子性
+
 - 整个事务中的所有操作，要么全部完成，要么全部不完成，不可能停滞在中间某个环节。
 - 事务在执行过程中发生错误，会被回滚（Rollback）到事务开始前的状态，就像这个事务从来没有执行过一样。
+
 ### 2. 一致性
+
 - 在事务开始之前和事务结束以后，数据库的完整性约束没有被破坏。
+
 ### 3. 隔离性
+
 - 隔离状态执行事务，使它们好像是系统在给定时间内执行的唯一操作。
 - 如果有两个事务，运行在相同的时间内，执行相同的功能，事务的隔离性将确保每一事务在系统中认为只有该事务在使用系统。
 - 这种属性有时称为串行化，为了防止事务操作间的混淆，必须串行化或序列化请求，使得在同一时间仅有一个请求用于同一数据。
+
 ### 4. 持久性
+
 - 在事务完成以后，该事务所对数据库所作的更改便持久的保存在数据库之中，并不会被回滚。
+  
 ### 5. 并发处理
+
 - 提高操作的效率
 
 ### 并发控制存在的问题
+
 - 丢失更新
 - 不可重复读
 - 读“脏”数据（临时值）
 
 ## 线程安全
+
 ### 1. 数据竞争（Race Condition）
 多个线程同时访问和修改共享数据，导致数据结果不可预测。
 **互斥锁（Mutex）**
@@ -139,7 +150,28 @@ volatile保证可见性但不保证原子性
 **通过工具检测死锁**
 jstack
 
-死锁，四个必要条件，以及如何避免，比如顺序加锁，超时机制
+### 死锁的四个条件
+
+* 死锁，四个必要条件，以及如何避免，比如顺序加锁，超时机制
+  - 互斥：只能由一个线程独享资源
+  - 保持: 因请求资源而阻塞时，对已获得的资源保持不释放
+  - 不能剥夺: 其他 进程/线程 需要等待该资源被释放
+  - 互相依赖/循环依赖
+
+```cpp
+// BAD: Lock ordering violation → deadlock
+// Thread A: Lock(A) → Lock(B)
+// Thread B: Lock(B) → Lock(A)
+
+// GOOD: Always lock in consistent order
+// Thread A: Lock(A) → Lock(B)
+// Thread B: Lock(A) → Lock(B)
+```
+
+* **如何解决？**
+  * 打破死锁产生的条件
+  * 银行家算法
+
 
 ### 3. 线程饥饿（Thread Starvation）
 某些线程因资源竞争而长时间无法获得足够的资源来执行。
@@ -221,9 +253,17 @@ Need sync?  ──No──>  No lock needed
 ```
 
 
-## Locking & Synchronization
+## 同步机制对比
 
-# Lock Types 
+| 机制     | 适用场景        | 性能 | 复杂度 |
+| -------- | --------------- | ---- | ------ |
+| 互斥锁   | 独占访问        | 中   | 低     |
+| 信号量   | 控制并发数      | 中   | 中     |
+| 条件变量 | 线程间通知等待  | 中   | 高     |
+| 读写锁   | 读多写少        | 高   | 中     |
+| 原子操作 | 简单计数器/标志 | 高   | 低     |
+
+## Lock Types 
 
 | Lock Type          | --     | Header                  | Recursive | Read/Write | Spin | Use Case                          |
 | ------------------ | ------ | ----------------------- | --------- | ---------- | ---- | --------------------------------- |
@@ -234,7 +274,7 @@ Need sync?  ──No──>  No lock needed
 | `FReadScopeLock`   | 读锁   | `Misc/ScopeLock.h`      | —         | Read       | —    | RAII read lock for FRWLock        |
 | `FWriteScopeLock`  | 写锁   | `Misc/ScopeLock.h`      | —         | Write      | —    | RAII write lock for FRWLock       |
 
-## Mutex FCriticalSection (互斥锁)
+### Mutex FCriticalSection (互斥锁)
 
 > Platform-abstracted mutex. Recursive (same thread can lock multiple times).
 > std::mutex即互斥量，它会在作用范围内进入临界区（Critical section），使得该代码片段同时只能由一个线程访问，当其它线程尝试执行该片段时，会被阻塞。
@@ -309,8 +349,9 @@ public:
 };
 ```
 
-## FRWLock (Read-Write Lock) 读写锁
+### FRWLock (Read-Write Lock) 读写锁
 
+> 允许多个读线程并发访问，写线程独占访问。
 > Multiple readers OR single writer. Ideal for read-heavy data.
 > c++11本身是没有读写锁的，目前c函数，或者c++自己实现一个读写锁读锁
 > 写锁
@@ -341,7 +382,31 @@ public:
 };
 ```
 
-## FSpinLock 旋转锁
+```java
+// Java
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+ReadWriteLock rwLock = new ReentrantReadWriteLock();
+
+// read
+rwLock.readLock().lock();
+try {
+    // read data
+} finally {
+    rwLock.readLock().unlock();
+}
+
+// write
+rwLock.writeLock().lock();
+try {
+    // write data
+} finally {
+    rwLock.writeLock().unlock();
+}
+```
+
+### FSpinLock 旋转锁
 
 > Busy-wait lock. No OS context switch. Only for **very short** critical sections (< 1μs).
 > 从“自旋锁”的名字也可以看出来，如果一个线程想要获取一个被使用的自旋锁，那么它会一致占用CPU请求这个自旋锁使得CPU不能去做其他的事情，直到获取这个锁为止，这就是“自旋”的含义。
@@ -360,7 +425,7 @@ void QuickUpdate()
 
 > ⚠️ **Warning**: SpinLock wastes CPU cycles while waiting. Never hold across allocations, I/O, or any potentially slow operation.
 
-## 递归锁
+### 递归锁
 
 > 互斥锁的基础上多次加锁解锁
 > 递归锁（Recursive Lock）也称为可重入互斥锁（reentrant mutex），
@@ -368,9 +433,10 @@ void QuickUpdate()
   >> 递归锁会使用引用计数机制，以便可以从同一线程多次加锁、解锁，当加锁、解锁次数相等时，锁才可以被其他线程获取。
 
 
-## Atomic Operations (Lock-Free) 原子锁
+### Atomic Operations (Lock-Free) 原子锁 原子操作
 
 > No lock needed. Hardware-level atomic instructions. Best performance for simple counters/flags.
+> 无锁的线程安全操作。
 
 ```cpp
 // FThreadSafeCounter — built-in atomic counter
@@ -404,7 +470,8 @@ FPlatformAtomics::InterlockedCompareExchange(&SharedInt, NewValue, ExpectedValue
 | `InterlockedCompareExchange` | CAS (Compare-And-Swap), foundation of lock-free algorithms |
 | `InterlockedAdd`             | Atomic `+=`                                                |
 
-### std::atomic原子性
+#### std::atomic原子性
+
 - 并不是关键字，而是STL的模板类
 - STL的模板类，可以支持指定类型的原子操作
 - 使用原子的类型意味着该类型的实例的读写操作都是原子性的，无法被其它线程切割，从而达到线程安全和同步的目标。
@@ -432,7 +499,7 @@ std::thread t1{f}, t2{f}, t3{f};
 
 
 
-## FEvent (Condition Signal)
+### FEvent (Condition Signal)
 
 > OS event for thread signaling. Thread sleeps until signaled (no busy-wait).
 
@@ -462,6 +529,34 @@ FPlatformProcess::ReturnSynchEventToPool(Event);
 ```
 
 ### condition_variable 条件变量 条件锁
+
+> 线程间基于条件的通知与等待。
+
+```cpp
+// C++
+#include <condition_variable>
+#include <mutex>
+
+std::mutex mtx;
+std::condition_variable cv;
+bool ready = false;
+
+// waiting thread
+void wait_for_ready() {
+    std::unique_lock<std::mutex> lock(mtx);
+    cv.wait(lock, [] { return ready; });
+    // proceed after notification
+}
+
+// notifying thread
+void set_ready() {
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        ready = true;
+    }
+    cv.notify_all();
+}
+```
 
 - 条件锁就是所谓的条件变量，某一个线程因为某个条件为满足时可以使用条件变量使改程序处于阻塞状态。
   - 一旦条件满足以“信号量”的方式唤醒一个因为该条件而被阻塞的线程。
@@ -576,7 +671,7 @@ void data_processing_thread()
 ```
 
 
-## Lock-Free Data Structures
+### Lock-Free Data Structures
 
 > UE provides lock-free containers for high-performance multi-thread communication.
 
@@ -610,7 +705,7 @@ FMyData* Item = LockFreeList.Pop();
 | `TLockFreePointerListFIFO` | N         | N         | Yes           |
 | `TCircularQueue`           | 1         | 1         | Yes (bounded) |
 
-## Synchronization in Rendering Context
+### Synchronization in Rendering Context
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -631,7 +726,7 @@ FMyData* Item = LockFreeList.Pop();
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Common Pitfalls
+### Common Pitfalls
 
 ### GT/RT Race Condition 竞态条件
 
@@ -675,7 +770,7 @@ ProcessData(LocalData);      // Slow work outside lock
 ```
 
 
-## MemoryBarrier 内存屏障
+### MemoryBarrier 内存屏障
 
 ### 内存屏障MemoryBarrier为什么会产生乱序？
 
@@ -805,25 +900,3 @@ if (IsValid)        // 加载并检测IsValid
 ```
 
 --- 
-# Dead Lock 
-
-```cpp
-// BAD: Lock ordering violation → deadlock
-// Thread A: Lock(A) → Lock(B)
-// Thread B: Lock(B) → Lock(A)
-
-// GOOD: Always lock in consistent order
-// Thread A: Lock(A) → Lock(B)
-// Thread B: Lock(A) → Lock(B)
-```
-
-## 死锁的四个条件
-- 互斥：只能由一个线程独享资源
-- 保持: 因请求资源而阻塞时，对已获得的资源保持不释放
-- 不能剥夺: 其他 进程/线程 需要等待该资源被释放
-- 互相依赖/循环依赖
-
-## 如何解决？
-打破死锁产生的条件
-银行家算法
-
