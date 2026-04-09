@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      Foliage
-subtitle:   植被系统
+title:      Foliage System
+subtitle:   Patch、Culling、LOD、BRG、Mesh、HIZ
 date:       2023-08-10
 author:     kang
 header-img: img/post-bg-ocenwar.jpg
@@ -24,6 +24,7 @@ tags:
 8. [注意事项](#8-注意事项)
 9. [优化方案](#9-优化方案)
 10. [平台适配](#10-平台适配)
+11. [BatchRendererGroup 渲染草](#11-batchrenderergroup-渲染草)
 
 ---
 
@@ -797,6 +798,281 @@ ThreadWorkerManager.OnInit(nMaxThreads: SystemInfo.processorCount > 4 ? 2 : 1);
   - 禁用 CrossFade
   - 禁用 ShadowProxy
 ```
+
+---
+
+## 11. BatchRendererGroup 渲染草
+
+### 11.1 概述
+
+`BatchRendererGroup`（BRG）是 Unity 提供的底层批量渲染 API，允许开发者完全控制 GPU 实例化渲染，绕过传统 GameObject 体系，是 **DOTS / GPU Driven** 渲染草的核心工具。
+
+> 适用版本：Unity 2022.1+，需开启 `DOTS Instancing`
+
+**与现有方案对比：**
+
+| 方案                        | 最大实例数 | CPU 开销 | 剔除方式      | 适用场景       |
+| --------------------------- | ---------- | -------- | ------------- | -------------- |
+| `DrawMeshInstanced`         | 1023/批    | 高       | CPU           | 小规模         |
+| `DrawMeshInstancedIndirect` | 无限制     | 中       | GPU Compute   | 中大规模       |
+| **BatchRendererGroup**      | **无限制** | **极低** | **Burst Job** | **大规模草地** |
+| ECS Entities Graphics       | 无限制     | 极低     | Burst Job     | 完整 DOTS 项目 |
+
+---
+
+### 11.2 核心流程
+
+```
+CPU 侧                                    GPU 侧
+  │                                         │
+  ├─ 创建 BatchRendererGroup                │
+  ├─ 注册 Mesh / Material                   │
+  ├─ 上传实例数据（位置/缩放/旋转） ─────────→ GraphicsBuffer（SSBO）
+  ├─ 实现 OnPerformCulling                  │
+  │   ├─ 视锥剔除（Burst Job）               │
+  │   └─ 填充 DrawCommand ─────────────────→ GPU Instancing Draw
+  └─ 按需更新实例数据                         │
+```
+
+---
+
+### 11.3 关键 API
+
+```csharp
+// 1. 创建 BRG
+var brg = new BatchRendererGroup(OnPerformCulling, IntPtr.Zero);
+
+// 2. 注册 Mesh 和 Material
+BatchMeshID     meshID = brg.RegisterMesh(grassMesh);
+BatchMaterialID matID  = brg.RegisterMaterial(grassMaterial);
+
+// 3. 创建 GraphicsBuffer 存储实例数据
+// 每个实例：ObjectToWorld(float3x4=48B) + WorldToObject(float3x4=48B) = 96B
+int instanceCount = 10000;
+graphicsBuffer = new GraphicsBuffer(
+    GraphicsBuffer.Target.Raw,
+    instanceCount * 2 * 12,   // 2 个 float3x4，每个 12 个 float
+    sizeof(float)
+);
+
+// 4. 注册 Batch，绑定 Shader 属性偏移
+var metadata = new NativeArray<MetadataValue>(1, Allocator.Temp);
+metadata[0]   = CreateMetadataValue(
+    Shader.PropertyToID("unity_ObjectToWorld"), 0, true);
+BatchID batchID = brg.AddBatch(metadata, graphicsBuffer.bufferHandle);
+```
+
+---
+
+### 11.4 OnPerformCulling 实现
+
+```csharp
+public JobHandle OnPerformCulling(
+    BatchRendererGroup    rendererGroup,
+    BatchCullingContext   cullingContext,
+    BatchCullingOutput    cullingOutput,
+    IntPtr                userContext)
+{
+    var drawCommands = new BatchCullingOutputDrawCommands();
+
+    // 分配输出数组
+    drawCommands.visibleInstances = Malloc<int>(instanceCount, Allocator.TempJob);
+    drawCommands.drawRanges       = Malloc<BatchDrawRange>(1,   Allocator.TempJob);
+    drawCommands.drawCommands     = Malloc<BatchDrawCommand>(1, Allocator.TempJob);
+
+    // 并行视锥剔除 Job
+    var cullingJob = new GrassCullingJob
+    {
+        planes        = cullingContext.cullingPlanes,
+        positions     = grassPositions,
+        boundRadius   = 0.5f,
+        visibleOutput = drawCommands.visibleInstances,
+        visibleCount  = visibleCountRef
+    };
+    var jobHandle = cullingJob.Schedule(instanceCount, 64);
+
+    // 填写 DrawCommand
+    drawCommands.drawCommands[0] = new BatchDrawCommand
+    {
+        visibleOffset       = 0,
+        visibleCount        = (uint)visibleCountRef.Value,
+        batchID             = batchID,
+        materialID          = matID,
+        meshID              = meshID,
+        submeshIndex        = 0,
+        splitVisibilityMask = 0xff,
+        flags               = BatchDrawCommandFlags.None,
+    };
+
+    drawCommands.drawRanges[0] = new BatchDrawRange
+    {
+        drawCommandsBegin = 0,
+        drawCommandsCount = 1,
+        filterSettings    = new BatchFilterSettings
+        {
+            renderingLayerMask = 1,
+            layer              = 0,
+            motionMode         = MotionVectorGenerationMode.Camera,
+            shadowCastingMode  = ShadowCastingMode.On,
+            receiveShadows     = true,
+            staticShadowCaster = false,
+            allDepthSorted     = false
+        }
+    };
+
+    cullingOutput.drawCommands[0] = drawCommands;
+    return jobHandle;
+}
+```
+
+---
+
+### 11.5 视锥剔除 Job（Burst）
+
+```csharp
+[BurstCompile]
+struct GrassCullingJob : IJobParallelFor
+{
+    [ReadOnly] public NativeArray<Plane>  planes;
+    [ReadOnly] public NativeArray<float3> positions;
+    [ReadOnly] public float               boundRadius;
+
+    [NativeDisableParallelForRestriction]
+    public NativeArray<int>               visibleOutput;
+    public NativeReference<int>           visibleCount;
+
+    public void Execute(int index)
+    {
+        float3 pos = positions[index];
+
+        // 球体 vs 6 个视锥平面
+        for (int i = 0; i < 6; i++)
+        {
+            float dist = math.dot((float3)planes[i].normal, pos) + planes[i].distance;
+            if (dist < -boundRadius) return; // 剔除
+        }
+
+        // 原子写入可见列表
+        int slot = System.Threading.Interlocked.Increment(ref visibleCount.Value) - 1;
+        visibleOutput[slot] = index;
+    }
+}
+```
+
+---
+
+### 11.6 GraphicsBuffer 实例数据布局
+
+```
+┌─────────────────────────────────────────────────────┐
+│  ObjectToWorld 区域（instanceCount × float3x4）      │
+│  [M0_row0~row2][M1_row0~row2]...[Mn_row0~row2]      │
+├─────────────────────────────────────────────────────┤
+│  WorldToObject 区域（instanceCount × float3x4）      │
+│  [I0_row0~row2][I1_row0~row2]...[In_row0~row2]      │
+└─────────────────────────────────────────────────────┘
+每个 float3x4 = 12 × float = 48 bytes
+```
+
+```csharp
+void UploadInstanceData(NativeArray<float3> positions)
+{
+    var data = new NativeArray<float>(instanceCount * 24, Allocator.Temp);
+
+    for (int i = 0; i < instanceCount; i++)
+    {
+        float4x4 m = float4x4.TRS(positions[i], quaternion.identity, new float3(1));
+
+        // ObjectToWorld（行优先写入 float3x4）
+        int o = i * 12;
+        data[o+0]=m.c0.x; data[o+1]=m.c1.x; data[o+2]=m.c2.x;  data[o+3]=m.c3.x;
+        data[o+4]=m.c0.y; data[o+5]=m.c1.y; data[o+6]=m.c2.y;  data[o+7]=m.c3.y;
+        data[o+8]=m.c0.z; data[o+9]=m.c1.z; data[o+10]=m.c2.z; data[o+11]=m.c3.z;
+
+        // WorldToObject（逆矩阵）
+        float4x4 inv = math.inverse(m);
+        int p = (instanceCount + i) * 12;
+        data[p+0]=inv.c0.x; data[p+1]=inv.c1.x; data[p+2]=inv.c2.x;  data[p+3]=inv.c3.x;
+        data[p+4]=inv.c0.y; data[p+5]=inv.c1.y; data[p+6]=inv.c2.y;  data[p+7]=inv.c3.y;
+        data[p+8]=inv.c0.z; data[p+9]=inv.c1.z; data[p+10]=inv.c2.z; data[p+11]=inv.c3.z;
+    }
+
+    graphicsBuffer.SetData(data);
+    data.Dispose();
+}
+```
+
+---
+
+### 11.7 Shader 适配（DOTS Instancing）
+
+```hlsl
+#pragma instancing_options renderinglayer
+#pragma target 4.5
+
+#ifdef UNITY_DOTS_INSTANCING_ENABLED
+    UNITY_DOTS_INSTANCING_START(MaterialPropertyMetadata)
+        UNITY_DOTS_DEFINE_INSTANCED_PROP(float4, _BaseColor)
+        UNITY_DOTS_DEFINE_INSTANCED_PROP(float,  _WindStrength)
+    UNITY_DOTS_INSTANCING_END(MaterialPropertyMetadata)
+
+    #define _BaseColor    UNITY_ACCESS_DOTS_INSTANCED_PROP_FROM_MACRO(float4, Metadata__BaseColor)
+    #define _WindStrength UNITY_ACCESS_DOTS_INSTANCED_PROP_FROM_MACRO(float,  Metadata__WindStrength)
+#endif
+```
+
+---
+
+### 11.8 与现有植被系统集成
+
+```mermaid
+flowchart TD
+    FM[FoliageMagic] --> RenderMode{RenderMode}
+    RenderMode -->|InstancedIndirect| IB[IndirectBatch<br/>DrawMeshInstancedIndirect]
+    RenderMode -->|Direct| RB[RenderBatch<br/>DrawMeshInstanced]
+    RenderMode -->|BRG| BRGB[BRGBatch<br/>BatchRendererGroup]
+
+    BRGB --> RegMesh[RegisterMesh]
+    BRGB --> RegMat[RegisterMaterial]
+    BRGB --> UploadBuf[UploadInstanceData<br/>GraphicsBuffer]
+    BRGB --> Culling[OnPerformCulling<br/>Burst Job 视锥剔除]
+    Culling --> DrawCmd[BatchDrawCommand]
+```
+
+**集成要点：**
+- BRG 可作为 `BatchBase` 的新子类 `BRGBatch` 接入现有 `RenderSystem`
+- 实例数据从现有 `Vector4` 压缩格式解码后写入 `GraphicsBuffer`
+- 剔除逻辑复用现有四叉树结果，在 `OnPerformCulling` 中直接填充可见列表
+
+---
+
+### 11.9 性能优化要点
+
+| 优化项             | 说明                                                           |
+| ------------------ | -------------------------------------------------------------- |
+| **Chunk 分块剔除** | 将草地划分为固定大小的 Chunk，先整块剔除再做实例级剔除         |
+| **LOD 分级**       | 在 `OnPerformCulling` 中按距离分配不同 LOD 的 `DrawCommand`    |
+| **Burst + Job**    | 剔除逻辑全部使用 `[BurstCompile]` + `IJobParallelFor` 并行执行 |
+| **距离剔除**       | 超过最大渲染距离直接跳过，不进入视锥判断                       |
+| **静态数据复用**   | 草的位置数据只在地形变化时重新上传，每帧只更新可见性索引       |
+| **Wind 动画**      | 风场动画在 Shader 中用顶点偏移实现，不影响 CPU 侧实例数据      |
+
+---
+
+### 11.10 注意事项
+
+> ⚠️ **BRG 需要 DOTS Instancing Shader**
+> - 普通 Shader 无法直接用于 BRG，需添加 `#pragma instancing_options renderinglayer` 并实现 `UNITY_DOTS_INSTANCING` 宏
+
+> ⚠️ **GraphicsBuffer 生命周期管理**
+> - `GraphicsBuffer` 必须在不使用时调用 `Dispose()`，否则造成 GPU 内存泄漏
+
+> ⚠️ **OnPerformCulling 线程安全**
+> - 该回调在 Job 线程中执行，禁止访问主线程 Unity API
+> - 所有数据必须通过 `NativeArray` / `NativeReference` 传递
+
+> ⚠️ **visibleCount 并发写入**
+> - 多线程并行写入可见列表时必须使用 `Interlocked.Increment` 保证原子性
 
 ---
 

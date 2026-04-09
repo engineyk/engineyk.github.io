@@ -35,6 +35,7 @@ def parse_post_file(filepath: Path):
     """
     title = None
     date_str = None
+    subtitle = None
 
     # Try to read YAML front matter
     try:
@@ -49,6 +50,10 @@ def parse_post_file(filepath: Path):
             title_match = re.search(r'^title:\s*["\']?(.+?)["\']?\s*$', fm, re.MULTILINE)
             if title_match:
                 title = title_match.group(1).strip()
+            # Extract subtitle
+            subtitle_match = re.search(r'^subtitle:\s*["\']?(.+?)["\']?\s*$', fm, re.MULTILINE)
+            if subtitle_match:
+                subtitle = subtitle_match.group(1).strip()
             # Extract date
             date_match = re.search(r'^date:\s*(.+?)\s*$', fm, re.MULTILINE)
             if date_match:
@@ -79,7 +84,7 @@ def parse_post_file(filepath: Path):
         if not date_str:
             date_str = ""
 
-    return title, url, date_str
+    return title, url, date_str, subtitle
 
 
 def scan_posts(posts_dir: str):
@@ -107,8 +112,8 @@ def scan_posts(posts_dir: str):
             if item.is_dir():
                 node['children'][item.name] = scan_dir(item)
             elif item.is_file() and item.suffix.lower() in ('.md', '.markdown', '.html'):
-                title, url, date_str = parse_post_file(item)
-                node['files'].append((title, url, date_str))
+                title, url, date_str, subtitle = parse_post_file(item)
+                node['files'].append((title, url, date_str, subtitle))
         return node
 
     return scan_dir(root)
@@ -172,9 +177,10 @@ def generate_html(tree: dict) -> str:
             # ul indent: one level deeper than heading
             ul_indent = '    ' * (depth + 2)
             lines.append(f'{ul_indent}<ul>')
-            for title, url, date_str in node['files']:
+            for title, url, date_str, subtitle in node['files']:
                 date_hint = f" <small>({date_str})</small>" if date_str else ""
-                lines.append(f'{ul_indent}    <li><a href="{url}">{title}</a>{date_hint}</li>')
+                subtitle_hint = f" <small>- {subtitle}</small>" if subtitle else ""
+                lines.append(f'{ul_indent}    <li><a href="{url}">{title}</a>{subtitle_hint}{date_hint}</li>')
             lines.append(f'{ul_indent}</ul>')
             lines.append('')
 
@@ -260,8 +266,9 @@ def main():
         prefix = '  ' * indent
         if name:
             print(f"{prefix}[{name}] {len(node['files'])} files")
-        for title, url, date_str in node['files']:
-            print(f"{prefix}  - {title} ({date_str})")
+        for title, url, date_str, subtitle in node['files']:
+            subtitle_str = f" - {subtitle}" if subtitle else ""
+            print(f"{prefix}  - {title}{subtitle_str} ({date_str})")
         for child_name, child_node in node['children'].items():
             print_tree(child_node, child_name, indent + 1)
 
