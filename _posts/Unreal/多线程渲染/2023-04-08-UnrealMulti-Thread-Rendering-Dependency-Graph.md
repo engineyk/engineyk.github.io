@@ -11,7 +11,7 @@ tags:
 ---
 
 
-<center> Unreal Multi-Thread Rendering Dependency Graph 渲染依赖性图表</center>
+<center> Rendering Dependency Graph 渲染依赖性图表</center>
 
 # <center> Overview</center>
 
@@ -21,7 +21,7 @@ tags:
                             |   What && How && Why
                             |
 2. RDGEngine                |
-                            |   → 2.1 Builder ： 心脏和发动机，大管家，负责收集渲染Pass和参数，编译Pass、数据，处理资源依赖，裁剪和优化各类数据，还有提供执行接口
+                            |   → 2.1 Builder：心脏和发动机，大管家，负责收集渲染Pass和参数，编译Pass、数据，处理资源依赖，裁剪和优化各类数据，还有提供执行接口
                             |       → RDGBuilder Pattern: 构建参数 AddPass
                             |   → 2.2 Pass System
                             |       → Pass Types
@@ -139,14 +139,14 @@ The framework automatically handles:
 
 ## Why Use a Rendering Dependency Graph? 为什么使用RDG？
 
-| Problem (Traditional)               | Solution (RDG)                           |
-| ----------------------------------- | ---------------------------------------- |
-| Manual resource lifetime management | Automatic transient resource allocation  |
-| Hardcoded render pass ordering      | Automatic dependency-driven scheduling   |
-| Manual barrier/transition insertion | Automatic synchronization                |
-| Difficult to add/remove features    | Modular pass-based architecture          |
-| Wasted GPU memory                   | Resource aliasing & memory pooling       |
-| Hard to parallelize CPU work        | Graph enables parallel command recording |
+| Problem (Traditional)               | Solution (RDG)                           |          |
+| ----------------------------------- | ---------------------------------------- | -------- |
+| Manual resource lifetime management | Automatic transient resource allocation  |          |
+| Hardcoded render pass ordering      | Automatic dependency-driven scheduling   |          |
+| Manual barrier/transition insertion | Automatic synchronization                | 自动同步 |
+| Difficult to add/remove features    | Modular pass-based architecture          |          |
+| Wasted GPU memory                   | Resource aliasing & memory pooling       | 内存管理 |
+| Hard to parallelize CPU work        | Graph enables parallel command recording |          |
 
 --- 
 
