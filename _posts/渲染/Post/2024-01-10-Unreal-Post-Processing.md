@@ -342,14 +342,14 @@ RenderAmbientOcclusion()
 
 #### 关键参数
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `AmbientOcclusionIntensity` | AO 强度 | 0.5 |
-| `AmbientOcclusionRadius` | 采样半径（世界空间单位） | 200 |
-| `AmbientOcclusionQuality` | 采样质量（影响采样数） | 50 |
-| `AmbientOcclusionBias` | 深度偏移，防止自遮蔽 | 3.0 |
-| `AmbientOcclusionFadeDistance` | AO 淡出距离 | 8000 |
-| `AmbientOcclusionPower` | AO 对比度（Gamma） | 2.0 |
+| 参数                           | 说明                     | 默认值 |
+| ------------------------------ | ------------------------ | ------ |
+| `AmbientOcclusionIntensity`    | AO 强度                  | 0.5    |
+| `AmbientOcclusionRadius`       | 采样半径（世界空间单位） | 200    |
+| `AmbientOcclusionQuality`      | 采样质量（影响采样数）   | 50     |
+| `AmbientOcclusionBias`         | 深度偏移，防止自遮蔽     | 3.0    |
+| `AmbientOcclusionFadeDistance` | AO 淡出距离              | 8000   |
+| `AmbientOcclusionPower`        | AO 对比度（Gamma）       | 2.0    |
 
 #### 相关 Shader 文件
 
@@ -403,11 +403,11 @@ RenderDiffuseIndirect()
 
 #### 关键参数
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `ScreenSpaceGIEnabled` | 是否启用 SSGI | false |
-| `r.SSGI.Quality` | 质量等级 1~4 | 4 |
-| `r.SSGI.HalfRes` | 半分辨率计算 | 1 |
+| 参数                    | 说明             | 默认值    |
+| ----------------------- | ---------------- | --------- |
+| `ScreenSpaceGIEnabled`  | 是否启用 SSGI    | false     |
+| `r.SSGI.Quality`        | 质量等级 1~4     | 4         |
+| `r.SSGI.HalfRes`        | 半分辨率计算     | 1         |
 | `r.SSGI.MaxRayDistance` | 最大光线追踪距离 | 0（自动） |
 
 #### 局限性
@@ -451,13 +451,13 @@ RenderReflections()
 
 #### 关键参数
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `ScreenSpaceReflectionIntensity` | SSR 强度 | 100 |
-| `ScreenSpaceReflectionQuality` | 质量（影响步进次数） | 50 |
-| `ScreenSpaceReflectionMaxRoughness` | 最大粗糙度（超过则用 IBL） | 0.6 |
-| `r.SSR.HalfResScatter` | 半分辨率散射 | 0 |
-| `r.SSR.Temporal` | 时间性积累 | 1 |
+| 参数                                | 说明                       | 默认值 |
+| ----------------------------------- | -------------------------- | ------ |
+| `ScreenSpaceReflectionIntensity`    | SSR 强度                   | 100    |
+| `ScreenSpaceReflectionQuality`      | 质量（影响步进次数）       | 50     |
+| `ScreenSpaceReflectionMaxRoughness` | 最大粗糙度（超过则用 IBL） | 0.6    |
+| `r.SSR.HalfResScatter`              | 半分辨率散射               | 0      |
+| `r.SSR.Temporal`                    | 时间性积累                 | 1      |
 
 #### 优化方向
 
@@ -499,16 +499,16 @@ AutoExposure 流程:
 
 #### 关键参数
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `AutoExposureMethod` | 直方图/基础/手动 | Histogram |
-| `AutoExposureBias` | 曝光补偿（EV） | 0 |
-| `AutoExposureMinBrightness` | 最小亮度限制 | 0.03 |
-| `AutoExposureMaxBrightness` | 最大亮度限制 | 8.0 |
-| `AutoExposureSpeedUp` | 变亮速度（s） | 3.0 |
-| `AutoExposureSpeedDown` | 变暗速度（s） | 1.0 |
-| `AutoExposureLowPercent` | 直方图低百分位 | 80 |
-| `AutoExposureHighPercent` | 直方图高百分位 | 98.3 |
+| 参数                        | 说明             | 默认值    |
+| --------------------------- | ---------------- | --------- |
+| `AutoExposureMethod`        | 直方图/基础/手动 | Histogram |
+| `AutoExposureBias`          | 曝光补偿（EV）   | 0         |
+| `AutoExposureMinBrightness` | 最小亮度限制     | 0.03      |
+| `AutoExposureMaxBrightness` | 最大亮度限制     | 8.0       |
+| `AutoExposureSpeedUp`       | 变亮速度（s）    | 3.0       |
+| `AutoExposureSpeedDown`     | 变暗速度（s）    | 1.0       |
+| `AutoExposureLowPercent`    | 直方图低百分位   | 80        |
+| `AutoExposureHighPercent`   | 直方图高百分位   | 98.3      |
 
 #### HDR 输出
 
@@ -582,16 +582,16 @@ ToneMapping Pass (Shader: PostProcessTonemap.usf)
 
 #### 关键参数
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `ToneCurveAmount` | Tonemapping 强度 | 1.0 |
-| `FilmSlope` | 曲线斜率（对比度） | 0.88 |
-| `FilmToe` | 暗部曲线 | 0.55 |
-| `FilmShoulder` | 高光曲线 | 0.26 |
-| `FilmBlackClip` | 黑点裁剪 | 0.0 |
-| `FilmWhiteClip` | 白点裁剪 | 0.04 |
-| `ColorSaturation` | 饱和度 | (1,1,1,1) |
-| `ColorContrast` | 对比度 | (1,1,1,1) |
+| 参数              | 说明               | 默认值    |
+| ----------------- | ------------------ | --------- |
+| `ToneCurveAmount` | Tonemapping 强度   | 1.0       |
+| `FilmSlope`       | 曲线斜率（对比度） | 0.88      |
+| `FilmToe`         | 暗部曲线           | 0.55      |
+| `FilmShoulder`    | 高光曲线           | 0.26      |
+| `FilmBlackClip`   | 黑点裁剪           | 0.0       |
+| `FilmWhiteClip`   | 白点裁剪           | 0.04      |
+| `ColorSaturation` | 饱和度             | (1,1,1,1) |
+| `ColorContrast`   | 对比度             | (1,1,1,1) |
 
 ---
 
@@ -628,14 +628,14 @@ Bloom 流程 (Shader: PostProcessBloom.usf)
 
 #### 关键参数
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `BloomIntensity` | Bloom 整体强度 | 0.675 |
-| `BloomThreshold` | 提取高亮阈值 | -1（自动） |
-| `BloomSizeScale` | Bloom 扩散尺寸 | 4.0 |
-| `Bloom1Size~6Size` | 各级 Bloom 尺寸 | 0.3~64 |
-| `Bloom1Tint~6Tint` | 各级 Bloom 颜色 | 白色 |
-| `BloomMethod` | Standard / Convolution | Standard |
+| 参数               | 说明                   | 默认值     |
+| ------------------ | ---------------------- | ---------- |
+| `BloomIntensity`   | Bloom 整体强度         | 0.675      |
+| `BloomThreshold`   | 提取高亮阈值           | -1（自动） |
+| `BloomSizeScale`   | Bloom 扩散尺寸         | 4.0        |
+| `Bloom1Size~6Size` | 各级 Bloom 尺寸        | 0.3~64     |
+| `Bloom1Tint~6Tint` | 各级 Bloom 颜色        | 白色       |
+| `BloomMethod`      | Standard / Convolution | Standard   |
 
 ---
 
@@ -672,15 +672,15 @@ RenderFog() → RenderExponentialHeightFog()
 
 #### 关键参数
 
-| 参数 | 说明 |
-|------|------|
-| `FogDensity` | 雾基础密度 |
-| `FogHeightFalloff` | 高度衰减系数（越大雾层越薄） |
-| `FogMaxOpacity` | 最大不透明度 |
-| `StartDistance` | 雾开始距离 |
-| `FogInscatteringColor` | 雾散射颜色 |
-| `DirectionalInscatteringExponent` | 定向散射指数 |
-| `VolumetricFog` | 是否启用体积雾 |
+| 参数                              | 说明                         |
+| --------------------------------- | ---------------------------- |
+| `FogDensity`                      | 雾基础密度                   |
+| `FogHeightFalloff`                | 高度衰减系数（越大雾层越薄） |
+| `FogMaxOpacity`                   | 最大不透明度                 |
+| `StartDistance`                   | 雾开始距离                   |
+| `FogInscatteringColor`            | 雾散射颜色                   |
+| `DirectionalInscatteringExponent` | 定向散射指数                 |
+| `VolumetricFog`                   | 是否启用体积雾               |
 
 ---
 
@@ -719,14 +719,14 @@ RenderVolumetricFog()
 
 #### 关键参数
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `VolumetricFogScatteringDistribution` | 散射分布（各向同性/各向异性） | 0.2 |
-| `VolumetricFogAlbedo` | 散射颜色 | 白色 |
-| `VolumetricFogExtinctionScale` | 消光系数缩放 | 1.0 |
-| `VolumetricFogDistance` | 体积雾最大距离 | 6000 |
-| `r.VolumetricFog.GridPixelSize` | Froxel 像素大小 | 8 |
-| `r.VolumetricFog.GridSizeZ` | Z 方向 Froxel 数量 | 64 |
+| 参数                                  | 说明                          | 默认值 |
+| ------------------------------------- | ----------------------------- | ------ |
+| `VolumetricFogScatteringDistribution` | 散射分布（各向同性/各向异性） | 0.2    |
+| `VolumetricFogAlbedo`                 | 散射颜色                      | 白色   |
+| `VolumetricFogExtinctionScale`        | 消光系数缩放                  | 1.0    |
+| `VolumetricFogDistance`               | 体积雾最大距离                | 6000   |
+| `r.VolumetricFog.GridPixelSize`       | Froxel 像素大小               | 8      |
+| `r.VolumetricFog.GridSizeZ`           | Z 方向 Froxel 数量            | 64     |
 
 ---
 
@@ -746,15 +746,15 @@ RenderVolumetricFog()
 
 ### 各模块改造方向
 
-| 模块 | 改造方向 | 预期收益 |
-|------|---------|----------|
-| SSAO | 升级为 GTAO / HBAO+，使用 HZB 加速 | 质量提升，性能持平 |
-| SSGI | 与 Lumen 结合，屏幕外用 Lumen 补充 | 解决屏幕边缘漏光 |
-| SSR | HZB 步进 + 时间性重建 + 粗糙度分级 | 性能提升 40%+ |
-| Bloom | 升级为 FFT Convolution Bloom | 更真实的镜头光晕 |
-| ToneMapping | 支持 HDR10/Dolby Vision 输出 | HDR 显示器支持 |
-| AutoExposure | 局部曝光（Local Tonemapping） | 高对比度场景改善 |
-| VolumetricFog | 降低 Froxel 分辨率 + 时间性积累 | 移动端可用 |
+| 模块          | 改造方向                           | 预期收益           |
+| ------------- | ---------------------------------- | ------------------ |
+| SSAO          | 升级为 GTAO / HBAO+，使用 HZB 加速 | 质量提升，性能持平 |
+| SSGI          | 与 Lumen 结合，屏幕外用 Lumen 补充 | 解决屏幕边缘漏光   |
+| SSR           | HZB 步进 + 时间性重建 + 粗糙度分级 | 性能提升 40%+      |
+| Bloom         | 升级为 FFT Convolution Bloom       | 更真实的镜头光晕   |
+| ToneMapping   | 支持 HDR10/Dolby Vision 输出       | HDR 显示器支持     |
+| AutoExposure  | 局部曝光（Local Tonemapping）      | 高对比度场景改善   |
+| VolumetricFog | 降低 Froxel 分辨率 + 时间性积累    | 移动端可用         |
 
 ### 自定义 Pass 接入方式
 
@@ -796,20 +796,20 @@ FMobileSceneRenderer vs FDeferredShadingSceneRenderer
 
 ### 各效果移动端方案
 
-| 效果 | PC 方案 | 移动端方案 | 说明 |
-|------|---------|-----------|------|
-| SSAO | 全质量 SSAO | Mobile SSAO（4采样）或烘焙 AO | 减少采样数，降低分辨率 |
-| SSGI | 屏幕空间 GI | 禁用，改用 IBL + 烘焙 | 性能开销过大 |
-| SSR | 全质量 SSR | PlanarReflection 或禁用 | 仅平面反射可用 |
-| HDR | FP16 HDR | FP16 或 R11G11B10 | 根据设备选择 |
-| AutoExposure | 直方图 | 基础 AutoExposure 或手动 | 避免 Compute Shader |
-| ToneMapping | ACES | Neutral Tonemapper | 降低 ALU 消耗 |
-| Bloom | 6级 Bloom | 2~3级 Bloom，降低分辨率 | 减少迭代次数 |
-| HeightFog | 指数高度雾 | 简化高度雾（单层） | 禁用体积雾 |
-| VolumetricFog | 3D Froxel | 禁用或极低质量 | 带宽/内存开销过大 |
-| DOF | Bokeh DOF | Gaussian DOF 或禁用 | 简化模糊算法 |
-| MotionBlur | 全质量 | 禁用或简化 | 移动端通常禁用 |
-| TAA | TSR/TAA | FXAA 或 TAA 简化版 | 减少历史帧带宽 |
+| 效果          | PC 方案     | 移动端方案                    | 说明                   |
+| ------------- | ----------- | ----------------------------- | ---------------------- |
+| SSAO          | 全质量 SSAO | Mobile SSAO（4采样）或烘焙 AO | 减少采样数，降低分辨率 |
+| SSGI          | 屏幕空间 GI | 禁用，改用 IBL + 烘焙         | 性能开销过大           |
+| SSR           | 全质量 SSR  | PlanarReflection 或禁用       | 仅平面反射可用         |
+| HDR           | FP16 HDR    | FP16 或 R11G11B10             | 根据设备选择           |
+| AutoExposure  | 直方图      | 基础 AutoExposure 或手动      | 避免 Compute Shader    |
+| ToneMapping   | ACES        | Neutral Tonemapper            | 降低 ALU 消耗          |
+| Bloom         | 6级 Bloom   | 2~3级 Bloom，降低分辨率       | 减少迭代次数           |
+| HeightFog     | 指数高度雾  | 简化高度雾（单层）            | 禁用体积雾             |
+| VolumetricFog | 3D Froxel   | 禁用或极低质量                | 带宽/内存开销过大      |
+| DOF           | Bokeh DOF   | Gaussian DOF 或禁用           | 简化模糊算法           |
+| MotionBlur    | 全质量      | 禁用或简化                    | 移动端通常禁用         |
+| TAA           | TSR/TAA     | FXAA 或 TAA 简化版            | 减少历史帧带宽         |
 
 ### 移动端性能分级方案
 
