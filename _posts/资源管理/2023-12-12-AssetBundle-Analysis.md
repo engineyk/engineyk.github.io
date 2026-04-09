@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      AssetBundle_Analysis
-subtitle:   AssetBundle_Analysis
+title:      Asset Bundle Analysis
+subtitle:   Asset Bundle Analysis
 date:       2023-12-12
 author:     kang
 header-img: img/post-bg-ocenwar.jpg
