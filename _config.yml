@@ -14,6 +14,14 @@ sidebar-about-description: "Goals determine what you going to be!"
 sidebar-avatar: /img/about-yk-gentle.png     # use absolute URL, seeing it's used in both `/` and `/about/`
 
 
+# 构建前执行
+before_build:
+  - python W:/git/engineyk.github.io/gen_resources.py
+
+# 构建后执行  
+after_build:
+  - python W:/git/engineyk.github.io/gen_resources.py 
+
 # SNS settings
 RSS: false
 # weibo_username:     engineyk
