@@ -3,7 +3,7 @@ layout:     post
 title:      Foliage System
 subtitle:   Patch、Culling、LOD、BRG、Mesh、HIZ
 date:       2023-08-10
-author:     kang
+author:     engineyk
 header-img: img/post-bg-ocenwar.jpg
 catalog: true
 tags:

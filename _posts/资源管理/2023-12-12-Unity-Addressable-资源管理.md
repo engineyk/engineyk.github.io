@@ -3,7 +3,7 @@ layout:     post
 title:      Unity Addressable 资源管理
 subtitle:   Unity
 date:       2023-12-12
-author:     kang
+author:     engineyk
 header-img: img/post-bg-ocenwar.jpg
 catalog: true
 tags:

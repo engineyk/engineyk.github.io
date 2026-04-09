@@ -3,7 +3,7 @@ layout:     post
 title:      Gameplay Ability System
 subtitle:   技能、属性、状态效果和交互逻辑
 date:       2023-04-09
-author:     kang
+author:     engineyk
 header-img: img/post-bg-ocenwar.jpg
 catalog: true
 tags:

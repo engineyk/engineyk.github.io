@@ -3,7 +3,7 @@ layout:     post
 title:      Unity Bundle 加载
 subtitle:   Bundle的加载
 date:       2023-12-12
-author:     kang
+author:     engineyk
 header-img: img/post-bg-ocenwar.jpg
 catalog: true
 tags:

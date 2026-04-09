@@ -3,7 +3,7 @@ layout:     post
 title:      Unreal Multi Thread UML
 subtitle:   UE multi thread rendering architecture and pipeline
 date:       2023-4-9
-author:     kang
+author:     engineyk
 header-img: img/post-bg-ocenwar.jpg
 catalog: true
 tags:

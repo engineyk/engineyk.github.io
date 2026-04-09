@@ -3,7 +3,7 @@ layout:     post
 title:      Render Pipeline
 subtitle:   渲染管线、应用阶段、几何阶段、光栅化、逐像素阶段
 date:       2022-3-4
-author:     kang
+author:     engineyk
 header-img: img/post-bg-ocenwar.jpg
 catalog: true
 tags:

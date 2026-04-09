@@ -3,7 +3,7 @@ layout:     post
 title:      Dedicated Server
 subtitle:   一个无渲染、无音频、无输入的纯逻辑服务端进程，基于 C/S 架构运行。
 date:       2025-04-09
-author:     kang
+author:     engineyk
 header-img: img/post-bg-ocenwar.jpg
 catalog: true
 tags:

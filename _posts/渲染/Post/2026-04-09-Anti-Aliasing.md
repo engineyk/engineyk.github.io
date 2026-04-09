@@ -3,7 +3,7 @@ layout:     post
 title:      Anti Aliasing
 subtitle:   AA
 date:       2026-04-09
-author:     kang
+author:     engineyk
 header-img: img/post-bg-ocenwar.jpg
 catalog: true
 tags:
