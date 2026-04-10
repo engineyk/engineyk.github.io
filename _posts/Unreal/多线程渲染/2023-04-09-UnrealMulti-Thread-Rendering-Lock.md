@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      Unreal Multi Thread Lock
-subtitle:   UE multi thread rendering architecture and pipeline
+title:      Unreal Multi Thread Renderer Lock
+subtitle:   锁机制和协议、各种锁、死锁
 date:       2023-4-9
 author:     engineyk
 header-img: img/post-bg-ocenwar.jpg
@@ -42,8 +42,8 @@ tags:
                             |   → 锁
                             |       → Mutex Lock            互斥锁 FCriticalSection
                             |       → Read-Write Lock       读写锁
-                            |       →   Read Lock           读锁
-                            |       →   Write Lock          写锁
+                            |           → Read Lock           读锁
+                            |           → Write Lock          写锁
                             |       → FSpinLock             自旋锁
                             |       → 递归锁
                             |       → ConditionVariable     条件锁 条件变量
@@ -53,7 +53,6 @@ tags:
                             |       → MemoryBarrier 内存屏障
                             |   → STD
                             |       → std::future   获取线程值
-                            |       → Mutex
 3. Dead Lock                |
                             |   → 死锁的四个条件
                             |       → 互斥

@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      Unreal Multi Thread Rendering Dependency Graph
-subtitle:   UE multi-thread rendering architecture and pipeline
+title:      Unreal Multi Thread Renderer RDG
+subtitle:   Rendering Dependency Graph
 date:       2023-4-8
 author:     engineyk
 header-img: img/post-bg-ocenwar.jpg
