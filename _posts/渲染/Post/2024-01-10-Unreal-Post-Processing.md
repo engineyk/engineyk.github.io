@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      Unreal Post Processing
-subtitle:   系统架构，后期处理系统架构，初始化流程，生命周期，各效果模块详解，改造方向与优化点，手机平台适配方案
+subtitle:   系统架构，各效果模块详解
 date:       2024-01-10
 author:     engineyk
 header-img: img/post-bg-ocenwar.jpg

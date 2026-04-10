@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "自定义地形系统"
+title: "GPU Terrain"
 subtitle: "流程 · 生命周期 · 优化 · 兼容性适配"
 date: 2026-04-09
 author: "engineyk"
@@ -9,7 +9,6 @@ tags:
   - Unity
   - Terrain
   - 渲染
-  - 优化
 ---
 
 # 自定义地形系统 深度解析
@@ -148,18 +147,18 @@ public Mesh GenerateChunkMesh(int lodLevel)
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                  TerrainSystem                       │
+│                  TerrainSystem                      │
 │                                                     │
 │  Awake()                                            │
-│    └─ 读取配置，分配内存，初始化 ChunkPool           │
+│    └─ 读取配置，分配内存，初始化 ChunkPool            │
 │                                                     │
 │  Start()                                            │
 │    └─ 生成所有 LOD Mesh，上传 Heightmap/Splatmap     │
 │       注册 SRP BeginCameraRendering 回调             │
 │                                                     │
-│  Update() ──────────────────────────────────────►  │
+│  Update() ──────────────────────────────────────►   │
 │    ├─ 更新相机位置                                   │
-│    ├─ 触发 LOD 重新计算（脏标记驱动）                │
+│    ├─ 触发 LOD 重新计算（脏标记驱动）                 │
 │    └─ 触发 Chunk 加载/卸载                           │
 │                                                     │
 │  OnBeginCameraRendering()                           │
@@ -217,16 +216,16 @@ d >= LOD3_Range →  Culled（不渲染）
 
 ### 5.1 对比 Unity 内置 Terrain
 
-| 特性 | Unity 内置 Terrain | 自定义地形系统 |
-|------|-------------------|---------------|
-| DrawCall 控制 | 自动，难以优化 | 完全自主，GPU Instancing |
-| LOD 策略 | 固定，不可定制 | 完全可定制 |
-| 移动端性能 | 较差 | 针对性优化 |
-| 与 SRP 集成 | 有限 | 深度集成 |
-| 地图尺寸上限 | ~4km² | 理论无上限 |
-| 内存管理 | 自动（不可控） | 手动对象池 |
-| Shader 定制 | 受限 | 完全自定义 |
-| 草地集成 | 独立系统 | 统一管理 |
+| 特性          | Unity 内置 Terrain | 自定义地形系统           |
+| ------------- | ------------------ | ------------------------ |
+| DrawCall 控制 | 自动，难以优化     | 完全自主，GPU Instancing |
+| LOD 策略      | 固定，不可定制     | 完全可定制               |
+| 移动端性能    | 较差               | 针对性优化               |
+| 与 SRP 集成   | 有限               | 深度集成                 |
+| 地图尺寸上限  | ~4km²              | 理论无上限               |
+| 内存管理      | 自动（不可控）     | 手动对象池               |
+| Shader 定制   | 受限               | 完全自定义               |
+| 草地集成      | 独立系统           | 统一管理                 |
 
 ### 5.2 性能优势
 
@@ -405,24 +404,24 @@ float3 CalculateTerrainNormal(sampler2D heightMap, float2 uv, float texelSize)
 
 ### 7.1 硬件兼容性要求
 
-| 功能 | 最低要求 | 用途 |
-|------|---------|------|
-| **Shader Model** | 3.0 | 基础地形渲染 |
-| **GPU Instancing** | OpenGL ES 3.0 / Metal | Chunk 批次合并 |
+| 功能               | 最低要求              | 用途             |
+| ------------------ | --------------------- | ---------------- |
+| **Shader Model**   | 3.0                   | 基础地形渲染     |
+| **GPU Instancing** | OpenGL ES 3.0 / Metal | Chunk 批次合并   |
 | **Compute Shader** | OpenGL ES 3.1 / Metal | GPU 剔除（可选） |
-| **RenderTexture** | OpenGL ES 2.0+ | Heightmap 存储 |
-| **Texture2DArray** | OpenGL ES 3.0 | 多层纹理（可选） |
+| **RenderTexture**  | OpenGL ES 2.0+        | Heightmap 存储   |
+| **Texture2DArray** | OpenGL ES 3.0         | 多层纹理（可选） |
 
 ### 7.2 平台支持矩阵
 
-| 平台 | GPU Instancing | Compute Shader | 推荐方案 |
-|------|---------------|---------------|----------|
-| PC (DX11+) | ✅ | ✅ | 全功能 |
-| iOS (Metal) | ✅ | ✅ A9+ | 全功能 |
-| Android (GLES 3.1+) | ✅ | ✅ | 全功能 |
-| Android (GLES 3.0) | ✅ | ❌ | CPU 剔除 |
-| Android (GLES 2.0) | ❌ | ❌ | 降级方案 |
-| WebGL 2.0 | ✅ | ❌ | CPU 剔除 |
+| 平台                | GPU Instancing | Compute Shader | 推荐方案 |
+| ------------------- | -------------- | -------------- | -------- |
+| PC (DX11+)          | ✅              | ✅              | 全功能   |
+| iOS (Metal)         | ✅              | ✅ A9+          | 全功能   |
+| Android (GLES 3.1+) | ✅              | ✅              | 全功能   |
+| Android (GLES 3.0)  | ✅              | ❌              | CPU 剔除 |
+| Android (GLES 2.0)  | ❌              | ❌              | 降级方案 |
+| WebGL 2.0           | ✅              | ❌              | CPU 剔除 |
 
 ### 7.3 运行时能力检测
 
@@ -611,17 +610,17 @@ public string GetTerrainShaderVariant(int splatLayerCount)
 
 ### 7.8 低端机优化策略汇总
 
-| 优化手段 | 高端机 | 中端机 | 低端机 | 极低端 |
-|---------|--------|--------|--------|--------|
+| 优化手段       | 高端机     | 中端机      | 低端机     | 极低端     |
+| -------------- | ---------- | ----------- | ---------- | ---------- |
 | GPU Instancing | ✅ Indirect | ✅ Instanced | ❌ DrawMesh | ❌ DrawMesh |
-| 视锥剔除 | GPU Hi-Z | CPU Burst | CPU 单线程 | CPU 简化 |
-| LOD 级别数 | 4 | 3 | 2 | 1 |
-| Chunk 网格精度 | 64×64 | 32×32 | 16×16 | 8×8 |
-| Heightmap 精度 | R16 2048² | R16 2048² | R8 1024² | R8 512² |
-| Splatmap 层数 | 4 | 3 | 2 | 1 |
-| 法线贴图 | ✅ | ✅ | ❌ | ❌ |
-| 草地渲染 | ✅ | ✅ | ❌ | ❌ |
-| 最大可见 Chunk | 256 | 128 | 64 | 32 |
+| 视锥剔除       | GPU Hi-Z   | CPU Burst   | CPU 单线程 | CPU 简化   |
+| LOD 级别数     | 4          | 3           | 2          | 1          |
+| Chunk 网格精度 | 64×64      | 32×32       | 16×16      | 8×8        |
+| Heightmap 精度 | R16 2048²  | R16 2048²   | R8 1024²   | R8 512²    |
+| Splatmap 层数  | 4          | 3           | 2          | 1          |
+| 法线贴图       | ✅          | ✅           | ❌          | ❌          |
+| 草地渲染       | ✅          | ✅           | ❌          | ❌          |
+| 最大可见 Chunk | 256        | 128         | 64         | 32         |
 
 ---
 
@@ -629,39 +628,39 @@ public string GetTerrainShaderVariant(int splatLayerCount)
 
 ### 8.1 性能对比
 
-| 指标 | Unity 内置 Terrain | 自定义地形系统 |
-|------|-------------------|---------------|
-| DrawCall（1km²地图） | ~20~50 | ~4（按LOD分组）|
-| 顶点数（全视野） | 固定高精度 | 按距离动态调整 |
-| CPU 剔除开销 | 较高 | Burst Job，极低 |
-| 内存占用 | 较高（不可控） | 可精确控制 |
-| 移动端帧率 | 30~45 FPS | 55~60 FPS |
+| 指标                 | Unity 内置 Terrain | 自定义地形系统  |
+| -------------------- | ------------------ | --------------- |
+| DrawCall（1km²地图） | ~20~50             | ~4（按LOD分组） |
+| 顶点数（全视野）     | 固定高精度         | 按距离动态调整  |
+| CPU 剔除开销         | 较高               | Burst Job，极低 |
+| 内存占用             | 较高（不可控）     | 可精确控制      |
+| 移动端帧率           | 30~45 FPS          | 55~60 FPS       |
 
 ### 8.2 功能对比
 
-| 功能 | Unity 内置 Terrain | 自定义地形系统 |
-|------|-------------------|---------------|
-| 地图尺寸 | 建议 ≤ 4km² | 理论无上限 |
-| LOD 定制 | 有限 | 完全自定义 |
-| Shader 定制 | 受限 | 完全自由 |
-| 与 SRP 集成 | 部分支持 | 深度集成 |
-| 草地系统 | 独立，性能差 | 统一管理 |
-| 运行时编辑 | 支持 | 需自行实现 |
-| 物理碰撞 | 内置 | 需自行实现 |
+| 功能        | Unity 内置 Terrain | 自定义地形系统 |
+| ----------- | ------------------ | -------------- |
+| 地图尺寸    | 建议 ≤ 4km²        | 理论无上限     |
+| LOD 定制    | 有限               | 完全自定义     |
+| Shader 定制 | 受限               | 完全自由       |
+| 与 SRP 集成 | 部分支持           | 深度集成       |
+| 草地系统    | 独立，性能差       | 统一管理       |
+| 运行时编辑  | 支持               | 需自行实现     |
+| 物理碰撞    | 内置               | 需自行实现     |
 
 ---
 
 ## 9. 核心概念速查
 
-| 概念 | 说明 |
-|------|------|
-| **Chunk** | 地形的基本渲染单元，固定尺寸的正方形网格 |
-| **LOD** | Level of Detail，根据距离降低网格精度 |
-| **Heightmap** | 存储地形高度信息的灰度纹理 |
-| **Splatmap** | 存储地表纹理混合权重的 RGBA 纹理 |
-| **Skirt** | 防止 LOD 接缝的裙边顶点 |
-| **GPU Instancing** | 一次 DrawCall 渲染多个相同 Mesh 的实例 |
-| **Hi-Z Culling** | 利用深度层级图进行 GPU 端遮挡剔除 |
-| **Burst Job** | Unity 的高性能 C# 编译器，用于并行 CPU 计算 |
+| 概念                          | 说明                                                |
+| ----------------------------- | --------------------------------------------------- |
+| **Chunk**                     | 地形的基本渲染单元，固定尺寸的正方形网格            |
+| **LOD**                       | Level of Detail，根据距离降低网格精度               |
+| **Heightmap**                 | 存储地形高度信息的灰度纹理                          |
+| **Splatmap**                  | 存储地表纹理混合权重的 RGBA 纹理                    |
+| **Skirt**                     | 防止 LOD 接缝的裙边顶点                             |
+| **GPU Instancing**            | 一次 DrawCall 渲染多个相同 Mesh 的实例              |
+| **Hi-Z Culling**              | 利用深度层级图进行 GPU 端遮挡剔除                   |
+| **Burst Job**                 | Unity 的高性能 C# 编译器，用于并行 CPU 计算         |
 | **DrawMeshInstancedIndirect** | GPU 驱动的间接绘制，DrawCall 参数由 GPU Buffer 提供 |
-| **Vertex Morphing** | LOD 切换时顶点平滑过渡，避免突变 |
+| **Vertex Morphing**           | LOD 切换时顶点平滑过渡，避免突变                    |
