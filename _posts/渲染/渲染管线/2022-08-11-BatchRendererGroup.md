@@ -1499,6 +1499,3 @@ buffer.Release();
 | DrawMeshInstancedIndirect | docs.unity3d.com/ScriptReference/Graphics.DrawMeshInstancedIndirect.html |
 
 ---
-
-> **文档版本**: v1.0  
-> **核心结论**: BRG 是 Unity 未来的标准大规模渲染方案，提供完整的渲染管线集成；Indirect 在超大规模 GPU 驱动场景中仍有不可替代的优势。实际项目中两者可以混合使用，取长补短。
