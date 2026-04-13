@@ -37,9 +37,9 @@ Traditional Rendering:                GPU Driven Rendering:
   │ Set State│                          │ Compact  │
   │ Per Draw │                          ├──────────┤
   ├──────────┤         ┌──────────┐     │ Indirect │
-  │ DrawCall │────────▶│ Vertex   │     │ Draw     │────▶ Rendering
-  │ DrawCall │────────▶│ Fragment │     └──────────┘
-  │ DrawCall │────────▶│ ...      │
+  │ DrawCall │────────>│ Vertex   │     │ Draw     │────▶ Rendering
+  │ DrawCall │────────>│ Fragment │     └──────────┘
+  │ DrawCall │────────>│ ...      │
   │ ...×1000 │         └──────────┘     1 Indirect DrawCall
   └──────────┘                          renders thousands of objects
 
