@@ -179,6 +179,7 @@ def generate_html(tree: dict) -> str:
             lines.append(f'{ul_indent}<ul>')
             for title, url, date_str, subtitle in node['files']:
                 date_hint = f" <small>({date_str})</small>" if date_str else ""
+                date_hint = f""
                 subtitle_hint = f" <small>- {subtitle}</small>" if subtitle else ""
                 lines.append(f'{ul_indent}    <li><a href="{url}">{title}</a>{subtitle_hint}{date_hint}</li>')
             lines.append(f'{ul_indent}</ul>')
