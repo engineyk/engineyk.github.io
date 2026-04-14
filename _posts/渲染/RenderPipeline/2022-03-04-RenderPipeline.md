@@ -55,9 +55,10 @@ tags:
   - **LateZ**：有discard、alpha test, 会**延迟DepthTest/写入**，在Pixel之后DepthTest；否则利用EarlyZ ← 退化路径
   - **合并Test&Blending**测试混合
     - **Test**测试
-      - → StencilTest：裁剪测试 判断像素是否通过模板缓冲区的规则
-      - → AlphaTest：（AlphaTest/Clip/Discard）
+      - → ScissorTest：裁剪测试 判断像素是否通过模板缓冲区的规则
+      - → AlphaTest：（Clip/Discard）
         - 无法在frag之前决定是否剔除， AlphaTest可**在深度测试执行前**在传入片段上运行，根据物体的透明度来决定是否渲染。
+      - → Stencil Test：模板测试
       - → DepthTest：位于像素处理阶段的测试合并阶段
     - **AlphaBlend** 混合(可配置) shader中的选项，blend命令等
       - 经过Test的进入Blend，需要framebuffer混合，无法执行深度测试，写入缓冲区
