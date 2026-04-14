@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      GBuffer和MRT
-subtitle:   IMR/TBR/TBDR 原理对比、Tile 工作流、带宽优化、厂商实现与引擎适配
+subtitle:   GBuffer和MRT
 date:       2026-04-14
 author:     engineyk
 header-img: img/post-bg-ocenwar.jpg
