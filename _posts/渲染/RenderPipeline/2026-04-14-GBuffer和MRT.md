@@ -36,10 +36,10 @@ MRT 渲染：
 
 ```
 ┌─────────────────────────────────────────────────┐
-│              Geometry Pass (Base Pass)           │
+│              Geometry Pass (Base Pass)          │
 │                                                 │
-│  对每个物体执行一次 Draw Call                      │
-│  Fragment Shader 同时输出到多张 GBuffer：          │
+│  对每个物体执行一次 Draw Call                     │
+│  Fragment Shader 同时输出到多张 GBuffer：         │
 │                                                 │
 │  out vec4 GBufferA;  // RT0: BaseColor + AO     │
 │  out vec4 GBufferB;  // RT1: Normal             │
@@ -47,16 +47,16 @@ MRT 渲染：
 │  out vec4 GBufferD;  // RT3: Emissive / Custom  │
 │  + Depth Buffer                                 │
 │                                                 │
-│  ✅ 一次 Draw Call 写入所有材质信息                │
-│  ✅ 无需多 Pass 重复提交几何                       │
+│  ✅ 一次 Draw Call 写入所有材质信息              │
+│  ✅ 无需多 Pass 重复提交几何                     │
 └─────────────────────────────────────────────────┘
                         ↓
 ┌─────────────────────────────────────────────────┐
 │              Lighting Pass                      │
 │                                                 │
 │  全屏 Quad / 光源体                              │
-│  采样 GBuffer 各张纹理 → 计算光照                  │
-│  输出最终颜色到 SceneColor                        │
+│  采样 GBuffer 各张纹理 → 计算光照                 │
+│  输出最终颜色到 SceneColor                       │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -275,19 +275,19 @@ GBufferOutput PS_GBuffer(VSOutput input)
 
 ```
 ┌──────────┬──────────┬──────────────────────────────────────────────┬──────────┐
-│  Target  │  Format  │  R          G          B          A         │  Bytes   │
+│  Target  │  Format  │  R          G          B          A          │  Bytes   │
 ├──────────┼──────────┼──────────────────────────────────────────────┼──────────┤
-│ GBufferA │  RGBA8   │ BaseColor.r BaseColor.g BaseColor.b  AO     │  4 B/px  │
-│ GBufferB │ RGB10A2  │ Normal.x    Normal.y    Normal.z    PerObj  │  4 B/px  │
-│ GBufferC │  RGBA8   │ Metallic    Specular    Roughness   ShadMdl │  4 B/px  │
-│ GBufferD │  RGBA8   │ CustomData  CustomData  CustomData  HasPxSh │  4 B/px  │
-│ GBufferE │  RGBA16F │ PrecompShadow / SubsurfaceColor             │  8 B/px  │ (optional)
-│ GBufferF │  RGBA8   │ Tangent.x   Tangent.y   Tangent.z   Aniso  │  4 B/px  │ (optional)
-│ Velocity │  RG16F   │ MotionVec.x MotionVec.y                     │  4 B/px  │ (optional)
+│ GBufferA │  RGBA8   │ BaseColor.r BaseColor.g BaseColor.b  AO      │  4 B/px  │
+│ GBufferB │ RGB10A2  │ Normal.x    Normal.y    Normal.z    PerObj   │  4 B/px  │
+│ GBufferC │  RGBA8   │ Metallic    Specular    Roughness   ShadMdl  │  4 B/px  │
+│ GBufferD │  RGBA8   │ CustomData  CustomData  CustomData  HasPxSh  │  4 B/px  │
+│ GBufferE │  RGBA16F │ PrecompShadow / SubsurfaceColor              │  8 B/px  │ (optional)
+│ GBufferF │  RGBA8   │ Tangent.x   Tangent.y   Tangent.z   Aniso    │  4 B/px  │ (optional)
+│ Velocity │  RG16F   │ MotionVec.x MotionVec.y                      │  4 B/px  │ (optional)
 │ Depth    │  D32F    │ HardwareDepth                                │  4 B/px  │
 ├──────────┼──────────┼──────────────────────────────────────────────┼──────────┤
-│ 基础总计  │          │ A + B + C + D + Depth                       │ 20 B/px  │
-│ 完整总计  │          │ + E + F + Velocity                          │ 36 B/px  │
+│ 基础总计  │          │ A + B + C + D + Depth                        │ 20 B/px  │
+│ 完整总计  │          │ + E + F + Velocity                           │ 36 B/px  │
 └──────────┴──────────┴──────────────────────────────────────────────┴──────────┘
 ```
 
@@ -368,14 +368,14 @@ switch(GBuffer.ShadingModelID)
 ### 4.1 常见编码方式对比
 
 ```
-┌─────────────────────┬────────┬──────────┬──────────────┐
-│ Method              │ Channels│ Quality │ ALU Cost     │
-├─────────────────────┼────────┼──────────┼──────────────┤
+┌─────────────────────┬─────────┬──────────┬──────────────┐
+│ Method              │ Channels│ Quality  │ ALU Cost     │
+├─────────────────────┼─────────┼──────────┼──────────────┤
 │ Raw XYZ             │ 3 (RGB) │ ★★★☆   │ 0 (直接存储)  │
 │ Spheremap (Lambert) │ 2 (RG)  │ ★★★★   │ ~8 ALU       │
 │ Octahedron          │ 2 (RG)  │ ★★★★★  │ ~6 ALU       │
 │ Stereographic       │ 2 (RG)  │ ★★★★   │ ~10 ALU      │
-└─────────────────────┴────────┴──────────┴──────────────┘
+└─────────────────────┴─────────┴──────────┴──────────────┘
 ```
 
 ### 4.2 Octahedron 编码（UE5 默认）
@@ -579,7 +579,7 @@ void main() {
 #### 策略 3：GBuffer 压缩 — 减少 RT 数量
 
 ```
-┌─────────────────────────────────────────────────────────┐
+┌────────────────────────────────────────────────────────┐
 │  Compact GBuffer (2 RT + Depth)                        │
 │                                                        │
 │  RT0 (RGBA8):                                          │
@@ -598,7 +598,7 @@ void main() {
 │    Hardware depth                                      │
 │                                                        │
 │  Total: 12 B/px vs 20 B/px (40% reduction)             │
-└─────────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────────┘
 ```
 
 #### 策略 4：Memoryless（Apple Metal）
@@ -623,15 +623,15 @@ desc.usage = MTLTextureUsageRenderTarget;
 ### 7.1 HDRP GBuffer 布局
 
 ```
-┌──────────┬──────────┬──────────────────────────────────────────┐
-│  Target  │  Format  │  Content                                 │
-├──────────┼──────────┼──────────────────────────────────────────┤
-│ GBuffer0 │  RGBA8   │ BaseColor.rgb + SpecularOcclusion        │
-│ GBuffer1 │  RGBA8   │ Normal (Octahedron) + Perceptual Rough   │
-│ GBuffer2 │  RGBA8   │ Metallic + Coat Mask + Material Features │
-│ GBuffer3 │  R11G11B10F │ Baked Diffuse Lighting (Lightmap)     │
-│ Depth    │  D32S8   │ Depth + Stencil (material classification)│
-└──────────┴──────────┴──────────────────────────────────────────┘
+┌──────────┬─────────────┬──────────────────────────────────────────┐
+│  Target  │  Format     │  Content                                 │
+├──────────┼─────────────┼──────────────────────────────────────────┤
+│ GBuffer0 │  RGBA8      │ BaseColor.rgb + SpecularOcclusion        │
+│ GBuffer1 │  RGBA8      │ Normal (Octahedron) + Perceptual Rough   │
+│ GBuffer2 │  RGBA8      │ Metallic + Coat Mask + Material Features │
+│ GBuffer3 │  R11G11B10F │ Baked Diffuse Lighting (Lightmap)        │
+│ Depth    │  D32S8      │ Depth + Stencil (material classification)│
+└──────────┴─────────────┴──────────────────────────────────────────┘
 ```
 
 ### 7.2 URP Deferred Path
@@ -671,13 +671,13 @@ public class UniversalRenderer : ScriptableRenderer
                                           ┌───────────────┼───────────────┐
                                           │               │               │
                                           ▼               ▼               ▼
-                                     ┌─────────┐   ┌─────────┐   ┌─────────┐
-                                     │GBufferA │   │GBufferB │   │GBufferC │  ...
-                                     │BaseColor│   │ Normal  │   │Material │
-                                     │  + AO   │   │         │   │ Props   │
-                                     └────┬────┘   └────┬────┘   └────┬────┘
-                                          │             │             │
-                                          ▼             ▼             ▼
+                                     ┌─────────┐     ┌─────────┐     ┌─────────┐
+                                     │GBufferA │     │GBufferB │     │GBufferC │  ...
+                                     │BaseColor│     │ Normal  │     │Material │
+                                     │  + AO   │     │         │     │ Props   │
+                                     └────┬────┘     └────┬────┘     └────┬────┘
+                                          │               │               │
+                                          ▼               ▼               ▼
                     ┌─────────────────────────────────────────────────────────┐
                     │                    GPU Memory (VRAM)                    │
                     │              or Tile SRAM (mobile TBR)                  │
@@ -711,7 +711,7 @@ public class UniversalRenderer : ScriptableRenderer
 分辨率: 1920 × 1080 = 2,073,600 pixels
 
 ┌────────────┬──────────┬──────────────┬──────────────────┐
-│ GBuffer 数  │ 格式      │ 每帧写入      │ @60fps 带宽      │
+│ GBuffer 数 │ 格式      │ 每帧写入      │ @60fps 带宽      │
 ├────────────┼──────────┼──────────────┼──────────────────┤
 │ 2 RT       │ 2×RGBA8  │ 16.6 MB      │ 0.99 GB/s        │
 │ 4 RT       │ 4×RGBA8  │ 33.2 MB      │ 1.99 GB/s        │
