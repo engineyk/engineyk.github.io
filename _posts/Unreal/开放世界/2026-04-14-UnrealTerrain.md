@@ -93,11 +93,11 @@ tags:
 Unreal 的解决方案：
 
   ┌──────────────────┐   ┌──────────────────┐   ┌──────────────────┐
-  │  Landscape 系统   │   │  Virtual Texture │   │  World Partition  │
+  │  Landscape 系统  │   │  Virtual Texture │   │  World Partition │
   │                  │   │                  │   │                  │
-  │ • 分块管理       │   │ • 按需加载纹理   │   │ • 流式加载世界   │
-  │ • 多级 LOD       │   │ • 减少材质开销   │   │ • 自动分区       │
-  │ • GPU Morphing   │   │ • 统一缓存管理   │   │ • HLOD 集成      │
+  │ • 分块管理        │   │ • 按需加载纹理    │   │ • 流式加载世界    │
+  │ • 多级 LOD       │   │ • 减少材质开销    │   │ • 自动分区        │
+  │ • GPU Morphing   │   │ • 统一缓存管理    │   │ • HLOD 集成      │
   └──────────────────┘   └──────────────────┘   └──────────────────┘
 ```
 
@@ -113,7 +113,7 @@ Unreal 的解决方案：
 │              │ (World Partition)│ (需拼接)         │                  │
 │ LOD          │ Component 级     │ Patch 级         │ Sector 级        │
 │ 材质混合      │ Layer Blend      │ Splat Map        │ Layer Painting   │
-│ Virtual Tex  │ RVT + SVT        │ 无原生支持       │ 有               │
+│ Virtual Tex  │ RVT + SVT        │ 无原生支持       │ 有                │
 │ 植被集成      │ Grass + Foliage  │ Detail + Tree    │ Vegetation       │
 │ Nanite 支持   │ UE5.2+           │ 无               │ 无               │
 │ 物理材质      │ Per-Layer        │ Per-Layer        │ Per-Layer        │
@@ -128,37 +128,37 @@ Unreal 的解决方案：
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        ALandscapeProxy                         │
-│  (Base class for all landscape actors)                         │
-│                                                                │
-│  ├── ALandscape                                                │
-│  │   • 主 Landscape Actor                                      │
-│  │   • 持有共享数据（LayerInfo、Material）                      │
-│  │   • 编辑器中的编辑入口                                       │
-│  │                                                             │
-│  └── ALandscapeStreamingProxy                                  │
-│      • 流式加载的子 Landscape                                   │
-│      • World Partition 自动生成                                 │
-│      • 每个 Proxy 包含若干 Component                            │
-│                                                                │
-│  内部组成：                                                     │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  ULandscapeComponent (继承自 UPrimitiveComponent)        │   │
-│  │  • 渲染和碰撞的基本单位                                   │   │
-│  │  • 每个 Component 是一个独立的 Draw Call                   │   │
-│  │  • 持有 HeightmapTexture、WeightmapTexture                │   │
-│  │                                                          │   │
-│  │  ┌─────────────────────────────────────────────────┐     │   │
-│  │  │  ULandscapeHeightfieldCollisionComponent         │     │   │
-│  │  │  • 碰撞数据                                      │     │   │
-│  │  │  • 可独立于渲染 Component 存在                    │     │   │
-│  │  └─────────────────────────────────────────────────┘     │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                │
-│  辅助类：                                                       │
-│  • ULandscapeInfo          - 全局 Landscape 信息管理            │
-│  • ULandscapeLayerInfoObject - 层信息（Physical Material 等）   │
-│  • FLandscapeComponentSceneProxy - 渲染线程代理                 │
+│                        ALandscapeProxy                          │
+│  (Base class for all landscape actors)                          │
+│                                                                 │
+│  ├── ALandscape                                                 │
+│  │   • 主 Landscape Actor                                       │
+│  │   • 持有共享数据（LayerInfo、Material）                       │
+│  │   • 编辑器中的编辑入口                                        │
+│  │                                                              │
+│  └── ALandscapeStreamingProxy                                   │
+│      • 流式加载的子 Landscape                                    │
+│      • World Partition 自动生成                                  │
+│      • 每个 Proxy 包含若干 Component                             │
+│                                                                 │
+│  内部组成：                                                      │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │  ULandscapeComponent (继承自 UPrimitiveComponent)        │    │
+│  │  • 渲染和碰撞的基本单位                                   │    │
+│  │  • 每个 Component 是一个独立的 Draw Call                  │    │
+│  │  • 持有 HeightmapTexture、WeightmapTexture               │    │
+│  │                                                         │    │
+│  │  ┌─────────────────────────────────────────────────┐    │    │
+│  │  │  ULandscapeHeightfieldCollisionComponent        │    │    │
+│  │  │  • 碰撞数据                                      │    │    │
+│  │  │  • 可独立于渲染 Component 存在                    │    │    │
+│  │  └─────────────────────────────────────────────────┘    │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  辅助类：                                                        │
+│  • ULandscapeInfo          - 全局 Landscape 信息管理             │
+│  • ULandscapeLayerInfoObject - 层信息（Physical Material 等）    │
+│  • FLandscapeComponentSceneProxy - 渲染线程代理                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -177,14 +177,14 @@ Unreal 的解决方案：
   创建 Landscape 时的关键参数：
 
   ┌────────────────────────────────────────────────────────────┐
-  │  Section Size:  每个 Section 的顶点数（边长）               │
-  │    可选值: 7×7, 15×15, 31×31, 63×63, 127×127, 255×255     │
+  │  Section Size:  每个 Section 的顶点数（边长）                │
+  │    可选值: 7×7, 15×15, 31×31, 63×63, 127×127, 255×255       │
   │                                                            │
   │  Sections Per Component:  每个 Component 包含的 Section 数  │
-  │    可选值: 1×1 或 2×2                                      │
+  │    可选值: 1×1 或 2×2                                       │
   │                                                            │
   │  Number of Components:  Component 的总数                    │
-  │    决定了 Landscape 的总尺寸                                │
+  │    决定了 Landscape 的总尺寸                                 │
   └────────────────────────────────────────────────────────────┘
 
   示例：Section Size = 63, Sections Per Component = 2×2
@@ -207,12 +207,12 @@ Unreal 的解决方案：
 ═══ 推荐配置 ═══
 
   ┌──────────────────┬──────────────┬──────────────┬──────────────┐
-  │  场景规模         │ Section Size │ Sections/Comp│ 说明          │
+  │  场景规模         │ Section Size │ Sections/Comp│ 说明         │
   ├──────────────────┼──────────────┼──────────────┼──────────────┤
-  │  小型（< 2km²）  │ 63×63        │ 1×1          │ 精细 LOD 控制 │
-  │  中型（2-16km²） │ 63×63        │ 2×2          │ 平衡选择      │
-  │  大型（> 16km²） │ 127×127      │ 2×2          │ 减少 Component│
-  │  超大（开放世界） │ 63×63        │ 2×2          │ + World Part. │
+  │  小型（< 2km²）   │ 63×63        │ 1×1          │ 精细 LOD 控制 │
+  │  中型（2-16km²）  │ 63×63        │ 2×2          │ 平衡选择      │
+  │  大型（> 16km²）  │ 127×127      │ 2×2          │ 减少 Component│
+  │  超大（开放世界） │ 63×63        │ 2×2           │ + World Part.│
   └──────────────────┴──────────────┴──────────────┴──────────────┘
 
   ⚠️ 关键约束：
@@ -249,12 +249,12 @@ Unreal 的解决方案：
   
   存储方式：
   ┌──────────────────────────────────────────────────┐
-  │  方式 1: Weight-Blended（默认）                    │
-  │  • 每层一个 R8 通道                                │
-  │  • 所有层权重之和 = 255                            │
-  │  • 最多 16 层（受 Texture Sampler 限制）           │
+  │  方式 1: Weight-Blended（默认）                   │
+  │  • 每层一个 R8 通道                               │
+  │  • 所有层权重之和 = 255                           │
+  │  • 最多 16 层（受 Texture Sampler 限制）          │
   │                                                  │
-  │  方式 2: Alpha-Blended                            │
+  │  方式 2: Alpha-Blended                           │
   │  • 层按顺序叠加                                   │
   │  • 上层覆盖下层                                   │
   │  • 不受权重归一化约束                              │
@@ -270,19 +270,19 @@ Unreal 的解决方案：
 
 ```
   ┌──────────────────────────────────────────────────────────┐
-  │  Landscape 使用自己的局部坐标系：                         │
+  │  Landscape 使用自己的局部坐标系：                          │
   │                                                          │
-  │  • 1 Landscape Unit = 1 Quad = 默认 100cm（1m）          │
-  │  • Scale 可调：Scale(100,100,100) → 1 Quad = 1m          │
-  │  • 顶点位置 = QuadIndex × Scale                          │
+  │  • 1 Landscape Unit = 1 Quad = 默认 100cm（1m）           │
+  │  • Scale 可调：Scale(100,100,100) → 1 Quad = 1m           │
+  │  • 顶点位置 = QuadIndex × Scale                           │
   │                                                          │
   │  坐标转换：                                               │
-  │  World Position = LandscapeTransform × Local Position     │
+  │  World Position = LandscapeTransform × Local Position    │
   │                                                          │
-  │  UV 计算：                                                │
-  │  HeightmapUV = VertexPosition.xy / ComponentSize          │
-  │  WeightmapUV = VertexPosition.xy / ComponentSize          │
-  │  MaterialUV  = WorldPosition.xy / TextureTilingScale      │
+  │  UV 计算：                                               │
+  │  HeightmapUV = VertexPosition.xy / ComponentSize         │
+  │  WeightmapUV = VertexPosition.xy / ComponentSize         │
+  │  MaterialUV  = WorldPosition.xy / TextureTilingScale     │
   └──────────────────────────────────────────────────────────┘
 ```
 
@@ -342,34 +342,38 @@ Unreal 的解决方案：
   │                                                         │
   │  LOD N 的顶点位置                                        │
   │       │                                                 │
-  │       │  MorphFactor = f(Distance, LOD)                  │
-  │       │  范围 [0, 1]                                     │
+  │       │  MorphFactor = f(Distance, LOD)                 │
+  │       │  范围 [0, 1]                                    │
   │       ▼                                                 │
   │  FinalHeight = lerp(LOD_N_Height, LOD_N+1_Height,       │
-  │                     MorphFactor)                         │
+  │                     MorphFactor)                        │
   │                                                         │
   │  当 MorphFactor = 0 → 完全使用当前 LOD                   │
-  │  当 MorphFactor = 1 → 完全使用下一级 LOD                 │
-  │       → 此时可以安全切换到 LOD N+1                       │
+  │  当 MorphFactor = 1 → 完全使用下一级 LOD                  │
+  │       → 此时可以安全切换到 LOD N+1                        │
   │                                                         │
   └─────────────────────────────────────────────────────────┘
+```
 
-  Vertex Shader 伪代码：
-  ```hlsl
-  // LandscapeVertexFactory.usf
-  float MorphAlpha = CalcLODMorphAlpha(Distance, LODLevel);
-  
-  // Even vertex: keep position
-  // Odd vertex: morph toward even neighbor
-  float3 MorphedPosition = Position;
-  if (IsOddVertex)
-  {
-      float3 NeighborAvg = (Neighbor0.Position + Neighbor1.Position) * 0.5;
-      MorphedPosition = lerp(Position, NeighborAvg, MorphAlpha);
-  }
-  ```
+Vertex Shader 伪代码：
 
-  原理图：
+```hlsl
+// LandscapeVertexFactory.usf
+float MorphAlpha = CalcLODMorphAlpha(Distance, LODLevel);
+
+// Even vertex: keep position
+// Odd vertex: morph toward even neighbor
+float3 MorphedPosition = Position;
+if (IsOddVertex)
+{
+    float3 NeighborAvg = (Neighbor0.Position + Neighbor1.Position) * 0.5;
+    MorphedPosition = lerp(Position, NeighborAvg, MorphAlpha);
+}
+```
+
+原理图：
+
+```
   LOD 0:  V0 --- V1 --- V2 --- V3 --- V4
                   ↓ morph
   LOD 1:  V0 --------- V2 --------- V4
@@ -406,22 +410,22 @@ Unreal 的解决方案：
 ### 3.4 LOD 参数调优
 
 ```
-  ┌──────────────────────────────────────────────────────────┐
-  │  参数                        │ 建议值    │ 影响          │
-  ├──────────────────────────────┼───────────┼───────────────┤
-  │  LOD 0 Screen Size           │ 1.0-2.0   │ LOD 0 范围    │
-  │  LOD Distribution Setting    │ 1.5-2.5   │ 远处 LOD 激进 │
-  │  LOD Falloff                 │ SquareRoot│ 过渡曲线      │
-  │  Forced LOD (调试用)          │ -1        │ 强制 LOD 级别 │
-  │  Component Screen Size       │ 0.06      │ 整体剔除阈值  │
-  │  Negative LOD Bias           │ 0         │ 全局 LOD 偏移 │
-  └──────────────────────────────┴───────────┴───────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  参数                        │ 建议值     │ 影响          │
+├──────────────────────────────┼───────────┼───────────────┤
+│  LOD 0 Screen Size           │ 1.0-2.0   │ LOD 0 范围    │
+│  LOD Distribution Setting    │ 1.5-2.5   │ 远处 LOD 激进  │
+│  LOD Falloff                 │ SquareRoot│ 过渡曲线       │
+│  Forced LOD (调试用)          │ -1        │ 强制 LOD 级别 │
+│  Component Screen Size       │ 0.06      │ 整体剔除阈值   │
+│  Negative LOD Bias           │ 0         │ 全局 LOD 偏移  │
+└──────────────────────────────┴───────────┴───────────────┘
 
-  调试命令：
-  • r.ForceLOD N              - 强制所有地形使用 LOD N
-  • r.LandscapeLODDistributionScale - 全局 LOD 分布缩放
-  • ShowFlag.LODColoration 1  - 可视化 LOD 级别
-  • stat landscape            - 地形性能统计
+调试命令：
+• r.ForceLOD N              - 强制所有地形使用 LOD N
+• r.LandscapeLODDistributionScale - 全局 LOD 分布缩放
+• ShowFlag.LODColoration 1  - 可视化 LOD 级别
+• stat landscape            - 地形性能统计
 ```
 
 ---
@@ -437,16 +441,16 @@ Unreal 的解决方案：
   │                                                          │
   │  Weightmap Texture (R8 per layer)                        │
   │  ┌─────┬─────┬─────┬─────┐                               │
-  │  │ L0  │ L1  │ L2  │ L3  │  ← 每层一个权重通道           │
-  │  │ 草地│ 泥土│ 岩石│ 沙地│                                │
+  │  │ L0  │ L1  │ L2  │ L3  │  ← 每层一个权重通道            │
+  │  │ 草地│ 泥土 │ 岩石│ 沙地│                               │
   │  └──┬──┴──┬──┴──┬──┴──┬──┘                               │
   │     │     │     │     │                                  │
   │     ▼     ▼     ▼     ▼                                  │
-  │  ┌─────────────────────────────────────────────┐         │
-  │  │  FinalColor = Σ(LayerColor[i] × Weight[i])  │         │
-  │  │  FinalNormal = Σ(LayerNormal[i] × Weight[i])│         │
+  │  ┌───────────────────────────────────────────────┐       │
+  │  │  FinalColor = Σ(LayerColor[i] × Weight[i])    │       │
+  │  │  FinalNormal = Σ(LayerNormal[i] × Weight[i])  │       │
   │  │  FinalRoughness = Σ(LayerRough[i] × Weight[i])│       │
-  │  └─────────────────────────────────────────────┘         │
+  │  └───────────────────────────────────────────────┘       │
   │                                                          │
   └──────────────────────────────────────────────────────────┘
 
@@ -466,15 +470,15 @@ Unreal 的解决方案：
      • 基于高度图的混合
      • 产生更自然的过渡效果
      • 额外采样高度纹理
+```
 
-  材质节点示例：
-  ```
-  [LandscapeLayerBlend]
-    Layer 0: "Grass"   - WeightBlend
-    Layer 1: "Dirt"    - WeightBlend  
-    Layer 2: "Rock"    - HeightBlend (Height Texture)
-    Layer 3: "Road"    - AlphaBlend
-  ```
+材质节点示例：
+```
+[LandscapeLayerBlend]
+  Layer 0: "Grass"   - WeightBlend
+  Layer 1: "Dirt"    - WeightBlend  
+  Layer 2: "Rock"    - HeightBlend (Height Texture)
+  Layer 3: "Road"    - AlphaBlend
 ```
 
 ### 4.2 Texture Array vs 传统多层
@@ -498,12 +502,12 @@ Unreal 的解决方案：
 
   ┌──────────────────────────────────────────────────┐
   │  Texture2DArray: DiffuseArray                    │
-  │  ┌─────┬─────┬─────┬─────┬─────┬─────┬─────┐    │
-  │  │ [0] │ [1] │ [2] │ [3] │ [4] │ [5] │ [6] │    │
-  │  │Grass│Dirt │Rock │Sand │Snow │Road │Mud  │    │
-  │  └─────┴─────┴─────┴─────┴─────┴─────┴─────┘    │
+  │  ┌─────┬─────┬─────┬─────┬─────┬─────┬─────┐     │
+  │  │ [0] │ [1] │ [2] │ [3] │ [4] │ [5] │ [6] │     │
+  │  │Grass│Dirt │Rock │Sand │Snow │Road │ Mud │     │
+  │  └─────┴─────┴─────┴─────┴─────┴─────┴─────┘     │
   │                                                  │
-  │  采样: DiffuseArray.Sample(UV, LayerIndex)        │
+  │  采样: DiffuseArray.Sample(UV, LayerIndex)       │
   └──────────────────────────────────────────────────┘
 
   约束：
@@ -567,19 +571,19 @@ Unreal 的解决方案：
 
   ┌──────────────────────────────────────────────────┐
   │  方法 1: Macro Texture                           │
-  │  • 覆盖整个地形的低分辨率纹理                     │
-  │  • 与 Tiling 纹理相乘                            │
-  │  • 打破重复感                                    │
+  │  • 覆盖整个地形的低分辨率纹理                      │
+  │  • 与 Tiling 纹理相乘                             │
+  │  • 打破重复感                                     │
   │                                                  │
   │  方法 2: World-Space Noise                       │
-  │  • 基于世界坐标的噪声函数                         │
+  │  • 基于世界坐标的噪声函数                          │
   │  • 调制颜色/亮度                                  │
-  │  • 无额外纹理开销                                │
+  │  • 无额外纹理开销                                 │
   │                                                  │
   │  方法 3: Stochastic Tiling                       │
-  │  • 随机旋转/偏移 UV                              │
-  │  • 消除规律性重复                                │
-  │  • 需要额外的 Shader 计算                        │
+  │  • 随机旋转/偏移 UV                               │
+  │  • 消除规律性重复                                 │
+  │  • 需要额外的 Shader 计算                         │
   └──────────────────────────────────────────────────┘
 ```
 
@@ -598,12 +602,12 @@ Unreal 的解决方案：
   ┌─────────────────────────────────────────────────────────┐
   │                                                         │
   │  传统方式：                                              │
-  │  每帧 → 采样 N 层纹理 → 混合 → 输出                     │
+  │  每帧 → 采样 N 层纹理 → 混合 → 输出                       │
   │  开销: N × (Diffuse + Normal + ORM) 次采样/像素          │
   │                                                         │
   │  RVT 方式：                                              │
-  │  预渲染 → 混合结果写入 VT Cache → 运行时只采样 Cache     │
-  │  开销: 1 次 VT 采样/像素（+ 偶尔的 Cache Miss 更新）     │
+  │  预渲染 → 混合结果写入 VT Cache → 运行时只采样 Cache       │
+  │  开销: 1 次 VT 采样/像素（+ 偶尔的 Cache Miss 更新）       │
   │                                                         │
   └─────────────────────────────────────────────────────────┘
 
@@ -612,22 +616,22 @@ Unreal 的解决方案：
   ┌──────────┐    ┌──────────────┐    ┌──────────────┐
   │ 相机移动  │ →  │ 确定可见 Page │ →  │ 检查 Cache   │
   └──────────┘    └──────────────┘    └──────┬───────┘
-                                            │
-                                    ┌───────┴───────┐
-                                    │               │
-                                ┌───▼───┐     ┌────▼────┐
-                                │ Cache │     │ Cache   │
-                                │ Hit   │     │ Miss    │
-                                └───┬───┘     └────┬────┘
-                                    │              │
-                                    │         ┌────▼────────┐
-                                    │         │ 渲染该 Page  │
-                                    │         │ 到 VT Cache  │
-                                    │         └────┬────────┘
-                                    │              │
-                                ┌───▼──────────────▼───┐
-                                │  采样 VT Cache 渲染   │
-                                └──────────────────────┘
+                                             │
+                                     ┌───────┴───────┐
+                                     │               │
+                                 ┌───▼───┐      ┌────▼────┐
+                                 │ Cache │      │ Cache   │
+                                 │ Hit   │      │ Miss    │
+                                 └───┬───┘      └────┬────┘
+                                     │               │
+                                     │          ┌────▼────────┐
+                                     │          │ 渲染该 Page  │
+                                     │          │ 到 VT Cache │
+                                     │          └────┬────────┘
+                                     │               │
+                                 ┌───▼───────────────▼───┐
+                                 │  采样 VT Cache 渲染    │
+                                 └───────────────────────┘
 ```
 
 ### 5.2 RVT 在地形中的应用
@@ -656,16 +660,16 @@ Unreal 的解决方案：
 
   ┌──────────────────────────────────────────────────┐
   │  1. 降低地形材质开销                              │
-  │     • 8 层混合 → 1 次 VT 采样                    │
+  │     • 8 层混合 → 1 次 VT 采样                     │
   │     • Pixel Shader 指令数大幅减少                 │
   │                                                  │
   │  2. 物体与地形融合                                │
-  │     • 岩石底部与地形颜色混合                      │
+  │     • 岩石底部与地形颜色混合                       │
   │     • 建筑地基与地面过渡                          │
   │     • 无需手动绘制 Decal                          │
   │                                                  │
   │  3. 远景材质简化                                  │
-  │     • 远处使用 RVT 低 Mip                        │
+  │     • 远处使用 RVT 低 Mip                         │
   │     • 近处使用完整材质                            │
   │     • 基于距离自动切换                            │
   └──────────────────────────────────────────────────┘
@@ -675,7 +679,7 @@ Unreal 的解决方案：
 
 ```
 ═══ SVT vs RVT ═══
-
+`
   ┌──────────────────┬──────────────────┬──────────────────┐
   │  特性             │  RVT             │  SVT             │
   ├──────────────────┼──────────────────┼──────────────────┤
@@ -689,7 +693,7 @@ Unreal 的解决方案：
 
   UE5 中 SVT 用于：
   • Virtual Texture Lightmap
-  • 超大纹理的流式加载
+  • 超大纹理的流式加载`
   • Nanite 的 Virtual Texture 集成
 ```
 
@@ -697,24 +701,24 @@ Unreal 的解决方案：
 
 ```
   ┌──────────────────────────────────────────────────────────┐
-  │  RVT 性能关键指标                                        │
+  │  RVT 性能关键指标                                         │
   │                                                          │
   │  • Page Fault Rate:  Cache Miss 频率                     │
   │    理想: < 5% per frame                                  │
-  │    过高原因: VT 分辨率不足 / Cache 太小 / 相机移动太快    │
+  │    过高原因: VT 分辨率不足 / Cache 太小 / 相机移动太快      │
   │                                                          │
-  │  • Cache Size:  VT 物理缓存大小                          │
+  │  • Cache Size:  VT 物理缓存大小                           │
   │    默认: 4096 × 4096                                     │
   │    增大可减少 Page Fault 但增加内存                       │
   │                                                          │
-  │  • Feedback Buffer:  反馈缓冲区分辨率                    │
-  │    默认: 屏幕分辨率 / 16                                 │
-  │    影响 Page 请求的精度                                  │
+  │  • Feedback Buffer:  反馈缓冲区分辨率                     │
+  │    默认: 屏幕分辨率 / 16                                  │
+  │    影响 Page 请求的精度                                   │
   │                                                          │
   │  调试命令：                                               │
-  │  • r.VT.Borders 1           - 显示 VT Page 边界          │
+  │  • r.VT.Borders 1           - 显示 VT Page 边界           │
   │  • r.VT.PageFaultWarning 1  - Page Fault 警告            │
-  │  • stat virtualtexturing    - VT 性能统计                │
+  │  • stat virtualtexturing    - VT 性能统计                 │
   └──────────────────────────────────────────────────────────┘
 ```
 
@@ -733,17 +737,17 @@ Unreal 的解决方案：
   ┌─────────────────────────────────────────────────────────┐
   │                                                         │
   │  World Partition Grid                                   │
-  │  ┌─────┬─────┬─────┬─────┬─────┐                       │
+  │  ┌─────┬─────┬─────┬─────┬─────┐                        │
   │  │     │     │ ██  │     │     │  ██ = 已加载           │
-  │  ├─────┼─────┼─────┼─────┼─────┤                       │
+  │  ├─────┼─────┼─────┼─────┼─────┤                        │
   │  │     │ ██  │ ██  │ ██  │     │  □  = 未加载           │
-  │  ├─────┼─────┼─────┼─────┼─────┤                       │
-  │  │     │ ██  │ ⊕█  │ ██  │     │  ⊕  = 玩家位置        │
-  │  ├─────┼─────┼─────┼─────┼─────┤                       │
-  │  │     │ ██  │ ██  │ ██  │     │                       │
-  │  ├─────┼─────┼─────┼─────┼─────┤                       │
-  │  │     │     │ ██  │     │     │                       │
-  │  └─────┴─────┴─────┴─────┴─────┘                       │
+  │  ├─────┼─────┼─────┼─────┼─────┤                        │
+  │  │     │ ██  │ ⊕█ │ ██  │     │  ⊕  = 玩家位置         │
+  │  ├─────┼─────┼─────┼─────┼─────┤                        │
+  │  │     │ ██  │ ██  │ ██  │     │                        │
+  │  ├─────┼─────┼─────┼─────┼─────┤                        │
+  │  │     │     │ ██  │     │     │                        │
+  │  └─────┴─────┴─────┴─────┴─────┘                        │
   │                                                         │
   │  加载半径由 Streaming Source 和 Grid 设置决定             │
   │                                                         │
@@ -790,13 +794,13 @@ Unreal 的解决方案：
 
   ┌──────────────────────────────────────────────────┐
   │  近处: 完整 Landscape Component（正常 LOD）       │
-  │        ↓ 距离增加                                │
-  │  中距: Landscape LOD 5-6（最低 LOD）             │
-  │        ↓ 距离继续增加                            │
-  │  远处: HLOD Mesh（简化的静态网格）               │
-  │        • 预烘焙的低模                            │
-  │        • 包含 RVT 采样的材质                     │
-  │        • 极低的 Draw Call 和顶点数               │
+  │        ↓ 距离增加                                 │
+  │  中距: Landscape LOD 5-6（最低 LOD）              │
+  │        ↓ 距离继续增加                             │
+  │  远处: HLOD Mesh（简化的静态网格）                 │
+  │        • 预烘焙的低模                             │
+  │        • 包含 RVT 采样的材质                      │
+  │        • 极低的 Draw Call 和顶点数                │
   └──────────────────────────────────────────────────┘
 
   HLOD 生成设置：
@@ -836,16 +840,16 @@ Unreal 的解决方案：
   ┌──────────────────────────────────────────────────────────┐
   │  ULandscapeHeightfieldCollisionComponent                 │
   │                                                          │
-  │  • 从 Heightmap 生成碰撞高度场                           │
-  │  • 碰撞分辨率可独立于渲染分辨率                           │
-  │  • Collision Mip Level: 碰撞使用的 LOD 级别              │
-  │    - 0 = 与渲染相同精度                                  │
-  │    - 1 = 1/2 精度                                       │
-  │    - 2 = 1/4 精度                                       │
+  │  • 从 Heightmap 生成碰撞高度场                            │
+  │  • 碰撞分辨率可独立于渲染分辨率                            │
+  │  • Collision Mip Level: 碰撞使用的 LOD 级别               │
+  │    - 0 = 与渲染相同精度                                   │
+  │    - 1 = 1/2 精度                                        │
+  │    - 2 = 1/4 精度                                        │
   │                                                          │
   │  Simple Collision Mip Level:                             │
-  │  • 用于简单碰撞查询（如 Overlap）                        │
-  │  • 通常设置更高的 Mip（更粗糙）                          │
+  │  • 用于简单碰撞查询（如 Overlap）                          │
+  │  • 通常设置更高的 Mip（更粗糙）                            │
   └──────────────────────────────────────────────────────────┘
 
   内存占用：
@@ -862,10 +866,10 @@ Unreal 的解决方案：
   每个 Landscape Layer 可以关联一个 Physical Material：
 
   ┌──────────────────────────────────────────────────┐
-  │  Layer "Grass"  → PM_Grass  (摩擦 0.8, 弹性 0.2)│
-  │  Layer "Rock"   → PM_Rock   (摩擦 0.6, 弹性 0.4)│
-  │  Layer "Sand"   → PM_Sand   (摩擦 0.9, 弹性 0.1)│
-  │  Layer "Water"  → PM_Water  (摩擦 0.1, 弹性 0.0)│
+  │  Layer "Grass"  → PM_Grass  (摩擦 0.8, 弹性 0.2)  │
+  │  Layer "Rock"   → PM_Rock   (摩擦 0.6, 弹性 0.4)  │
+  │  Layer "Sand"   → PM_Sand   (摩擦 0.9, 弹性 0.1)  │
+  │  Layer "Water"  → PM_Water  (摩擦 0.1, 弹性 0.0)  │
   └──────────────────────────────────────────────────┘
 
   运行时查询：
@@ -873,7 +877,7 @@ Unreal 的解决方案：
   • Hit Result 包含 Physical Material
   • 用于：脚步声、粒子效果、车辆物理等
 
-  ```cpp
+
   // Query physical material at hit point
   FHitResult Hit;
   if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility))
@@ -885,30 +889,30 @@ Unreal 的解决方案：
           EPhysicalSurface Surface = PhysMat->SurfaceType;
       }
   }
-  ```
+
 ```
 
 ### 7.3 碰撞性能优化
 
 ```
   ┌──────────────────────────────────────────────────────────┐
-  │  优化策略                                                │
+  │  优化策略                                                 │
   │                                                          │
   │  1. 提高 Collision Mip Level                             │
-  │     • 大多数游戏 Mip 1-2 足够                            │
-  │     • 角色脚步不需要 cm 级精度                           │
+  │     • 大多数游戏 Mip 1-2 足够                             │
+  │     • 角色脚步不需要 cm 级精度                             │
   │                                                          │
   │  2. 使用 Simple Collision 替代 Complex                   │
   │     • Overlap 查询使用 Simple                            │
-  │     • 只有精确射线检测使用 Complex                       │
+  │     • 只有精确射线检测使用 Complex                        │
   │                                                          │
-  │  3. 碰撞通道优化                                         │
-  │     • 地形只响应必要的碰撞通道                           │
-  │     • 禁用不需要的 Object Type 响应                      │
+  │  3. 碰撞通道优化                                          │
+  │     • 地形只响应必要的碰撞通道                             │
+  │     • 禁用不需要的 Object Type 响应                       │
   │                                                          │
-  │  4. 异步碰撞查询                                         │
-  │     • 大量射线检测使用 AsyncLineTrace                    │
-  │     • 避免主线程阻塞                                     │
+  │  4. 异步碰撞查询                                          │
+  │     • 大量射线检测使用 AsyncLineTrace                     │
+  │     • 避免主线程阻塞                                      │
   └──────────────────────────────────────────────────────────┘
 ```
 
@@ -936,9 +940,9 @@ Unreal 的解决方案：
   │                                                          │
   │  生成流程：                                               │
   │  1. 在 Volume 内随机撒种子                                │
-  │  2. 模拟生长（年龄递增）                                  │
-  │  3. 竞争淘汰（遮挡、重叠）                                │
-  │  4. 最终存活的实例放置到地形上                            │
+  │  2. 模拟生长（年龄递增）                                   │
+  │  3. 竞争淘汰（遮挡、重叠）                                 │
+  │  4. 最终存活的实例放置到地形上                             │
   └──────────────────────────────────────────────────────────┘
 ```
 
@@ -952,24 +956,24 @@ Unreal 的解决方案：
   ┌──────────────────────────────────────────────────────────┐
   │  ULandscapeGrassType                                     │
   │                                                          │
-  │  • 绑定到 Landscape Material 的特定层                    │
-  │  • 根据权重值自动生成草地实例                             │
+  │  • 绑定到 Landscape Material 的特定层                     │
+  │  • 根据权重值自动生成草地实例                              │
   │  • 使用 Hierarchical Instanced Static Mesh（HISM）       │
-  │  • 支持 LOD 和距离剔除                                   │
+  │  • 支持 LOD 和距离剔除                                    │
   │                                                          │
   │  关键参数：                                               │
   │  • Grass Density:      每平方米草的数量                   │
   │  • Start/End Cull Distance: 渲染距离范围                  │
   │  • Min/Max LOD:        LOD 范围                          │
-  │  • Random Rotation:    随机旋转                          │
-  │  • Align To Surface:   对齐地表法线                      │
-  │  • Use Landscape Lightmap: 使用地形光照图                │
+  │  • Random Rotation:    随机旋转                           │
+  │  • Align To Surface:   对齐地表法线                       │
+  │  • Use Landscape Lightmap: 使用地形光照图                 │
   │                                                          │
   │  性能特点：                                               │
-  │  • 不持久化存储（运行时动态生成）                         │
-  │  • 基于相机位置流式生成/销毁                              │
-  │  • 使用 GPU Instancing 渲染                              │
-  │  • 内存占用低（只存储规则，不存储实例）                   │
+  │  • 不持久化存储（运行时动态生成）                           │
+  │  • 基于相机位置流式生成/销毁                               │
+  │  • 使用 GPU Instancing 渲染                               │
+  │  • 内存占用低（只存储规则，不存储实例）                     │
   └──────────────────────────────────────────────────────────┘
 ```
 
@@ -1005,16 +1009,16 @@ Unreal 的解决方案：
 ═══ Sculpt 模式 ═══
 
   ┌──────────────────────────────────────────────────┐
-  │  工具              │ 功能                        │
+  │  工具              │ 功能                         │
   ├──────────────────────────────────────────────────┤
-  │  Sculpt            │ 自由雕刻高度                │
-  │  Smooth            │ 平滑地形                    │
-  │  Flatten           │ 压平到指定高度              │
-  │  Erosion           │ 模拟侵蚀效果                │
-  │  Hydro Erosion     │ 水力侵蚀                    │
-  │  Noise             │ 噪声扰动                    │
-  │  Retopologize      │ 重新拓扑                    │
-  │  Mirror            │ 镜像编辑                    │
+  │  Sculpt            │ 自由雕刻高度                 │
+  │  Smooth            │ 平滑地形                     │
+  │  Flatten           │ 压平到指定高度               │
+  │  Erosion           │ 模拟侵蚀效果                 │
+  │  Hydro Erosion     │ 水力侵蚀                     │
+  │  Noise             │ 噪声扰动                     │
+  │  Retopologize      │ 重新拓扑                     │
+  │  Mirror            │ 镜像编辑                     │
   └──────────────────────────────────────────────────┘
 
 ═══ Paint 模式 ═══
@@ -1036,15 +1040,15 @@ Unreal 的解决方案：
   │  ULandscapeSplineComponent                               │
   │                                                          │
   │  功能：                                                   │
-  │  • 沿 Spline 变形地形高度                                │
-  │  • 沿 Spline 绘制材质层                                  │
-  │  • 沿 Spline 放置 Mesh（护栏、路灯等）                   │
-  │  • 支持交叉路口处理                                      │
+  │  • 沿 Spline 变形地形高度                                 │
+  │  • 沿 Spline 绘制材质层                                   │
+  │  • 沿 Spline 放置 Mesh（护栏、路灯等）                     │
+  │  • 支持交叉路口处理                                       │
   │                                                          │
   │  参数：                                                   │
   │  • Width:           道路宽度                              │
   │  • Side Falloff:    边缘衰减                              │
-  │  • Raise/Lower Terrain: 抬升/降低地形                    │
+  │  • Raise/Lower Terrain: 抬升/降低地形                     │
   │  • Paint Layer:     绘制的材质层                          │
   └──────────────────────────────────────────────────────────┘
 ```
@@ -1056,7 +1060,7 @@ Unreal 的解决方案：
 
   使用 Blueprint 或 C++ 程序化编辑地形：
 
-  ```cpp
+  
   // Custom Landscape Brush
   UCLASS()
   class ALandscapeBlueprintBrush : public ALandscapeBlueprintBrushBase
@@ -1068,7 +1072,7 @@ Unreal 的解决方案：
           UTextureRenderTarget2D* InCombinedResult,
           const FName& InWeightmapLayerName) override;
   };
-  ```
+  
 
   用途：
   • 程序化地形生成（噪声、分形）
@@ -1084,11 +1088,11 @@ Unreal 的解决方案：
   ┌──────────────────┬──────────────────────────────────────┐
   │  工具             │ 特点                                 │
   ├──────────────────┼──────────────────────────────────────┤
-  │  World Machine   │ 节点式地形生成，侵蚀模拟强           │
-  │  Gaea            │ 现代 UI，GPU 加速，实时预览          │
-  │  Houdini         │ 程序化生成，与 UE 深度集成           │
-  │  World Creator   │ 实时地形雕刻，VR 支持                │
-  │  Terragen        │ 超写实地形渲染                       │
+  │  World Machine   │ 节点式地形生成，侵蚀模拟强              │
+  │  Gaea            │ 现代 UI，GPU 加速，实时预览            │
+  │  Houdini         │ 程序化生成，与 UE 深度集成             │
+  │  World Creator   │ 实时地形雕刻，VR 支持                  │
+  │  Terragen        │ 超写实地形渲染                        │
   └──────────────────┴──────────────────────────────────────┘
 
   导入格式：
@@ -1128,10 +1132,10 @@ Unreal 的解决方案：
   │     └── Landscape Shadow Maps                            │
   │                                                          │
   │  4. Lighting Pass                                        │
-  │     └── 使用 GBuffer 数据计算光照                        │
+  │     └── 使用 GBuffer 数据计算光照                         │
   │                                                          │
   │  5. RVT Update (if needed)                               │
-  │     └── 更新 Cache Miss 的 VT Page                       │
+  │     └── 更新 Cache Miss 的 VT Page                        │
   └──────────────────────────────────────────────────────────┘
 ```
 
@@ -1144,35 +1148,35 @@ Unreal 的解决方案：
 
   ┌──────────────────────────────────────────────────────────┐
   │  传统 Landscape:                                         │
-  │  • 固定网格拓扑                                          │
-  │  • 基于距离的 LOD                                        │
-  │  • 每个 Component 一个 Draw Call                         │
+  │  • 固定网格拓扑                                           │
+  │  • 基于距离的 LOD                                         │
+  │  • 每个 Component 一个 Draw Call                          │
   │                                                          │
   │  Nanite Landscape:                                       │
-  │  • Nanite 虚拟几何体                                     │
-  │  • 像素级 LOD（屏幕空间误差驱动）                        │
-  │  • GPU Driven 渲染（极少 Draw Call）                     │
-  │  • 自动处理 LOD 过渡和缝合                               │
+  │  • Nanite 虚拟几何体                                      │
+  │  • 像素级 LOD（屏幕空间误差驱动）                          │
+  │  • GPU Driven 渲染（极少 Draw Call）                      │
+  │  • 自动处理 LOD 过渡和缝合                                │
   │                                                          │
   │  启用方式：                                               │
   │  Landscape Actor → Details → Nanite → Enable Nanite      │
   │                                                          │
-  │  限制：                                                   │
-  │  • 不支持运行时地形修改                                  │
-  │  • 不支持 Landscape Spline 变形                          │
-  │  • 材质必须兼容 Nanite                                   │
-  │  • 增加 GPU 内存占用                                     │
+  │  限制：                                                  │
+  │  • 不支持运行时地形修改                                    │
+  │  • 不支持 Landscape Spline 变形                           │
+  │  • 材质必须兼容 Nanite                                    │
+  │  • 增加 GPU 内存占用                                      │
   └──────────────────────────────────────────────────────────┘
 
   性能对比（8km × 8km 地形）：
   ┌──────────────────┬──────────────────┬──────────────────┐
   │  指标             │  传统 Landscape  │  Nanite Landscape│
   ├──────────────────┼──────────────────┼──────────────────┤
-  │  Draw Call        │  200-500         │  1-5             │
-  │  三角形数         │  固定（LOD 决定）│  自适应          │
-  │  LOD Popping      │  可能            │  无              │
-  │  GPU 内存         │  低              │  中-高           │
-  │  CPU 开销         │  中              │  极低            │
+  │  Draw Call       │  200-500         │  1-5             │
+  │  三角形数         │  固定（LOD 决定）│  自适应           │
+  │  LOD Popping     │  可能            │  无              │
+  │  GPU 内存        │  低              │  中-高            │
+  │  CPU 开销        │  中              │  极低             │
   └──────────────────┴──────────────────┴──────────────────┘
 ```
 
@@ -1183,22 +1187,22 @@ Unreal 的解决方案：
 
   ┌──────────────────────────────────────────────────────────┐
   │  Screen Space Trace:                                     │
-  │  • 地形参与屏幕空间光线追踪                              │
-  │  • 提供近距离 GI 反弹                                    │
+  │  • 地形参与屏幕空间光线追踪                                │
+  │  • 提供近距离 GI 反弹                                     │
   │                                                          │
   │  Surface Cache:                                          │
-  │  • 地形的 Surface Cache 使用 RVT 数据                    │
-  │  • 减少实时材质计算                                      │
+  │  • 地形的 Surface Cache 使用 RVT 数据                     │
+  │  • 减少实时材质计算                                       │
   │                                                          │
   │  Distance Field:                                         │
   │  • 地形生成 Heightfield Distance Field                   │
-  │  • 用于远距离 GI 和 AO                                   │
+  │  • 用于远距离 GI 和 AO                                    │
   │  • 比 Mesh Distance Field 更高效                         │
   │                                                          │
   │  注意事项：                                               │
-  │  • 大面积地形的 Surface Cache 更新开销较大                │
-  │  • 建议配合 RVT 使用以减少开销                           │
-  │  • Lumen Scene 中地形的 Card 生成策略不同于普通 Mesh      │
+  │  • 大面积地形的 Surface Cache 更新开销较大                 │
+  │  • 建议配合 RVT 使用以减少开销                             │
+  │  • Lumen Scene 中地形的 Card 生成策略不同于普通 Mesh       │
   └──────────────────────────────────────────────────────────┘
 ```
 
@@ -1210,24 +1214,24 @@ Unreal 的解决方案：
   ┌──────────────────────────────────────────────────────────┐
   │  1. Cascaded Shadow Map (CSM)                            │
   │     • 地形是 CSM 的主要消费者                             │
-  │     • 每个 Cascade 都需要渲染地形 Depth                  │
-  │     • 优化: 使用 Far Shadow（独立的远距离阴影 Cascade）   │
+  │     • 每个 Cascade 都需要渲染地形 Depth                   │
+  │     • 优化: 使用 Far Shadow（独立的远距离阴影 Cascade）    │
   │                                                          │
   │  2. Far Shadow                                           │
-  │     • 专门为地形和大型物体设计                            │
-  │     • 独立于 CSM 的远距离阴影                            │
-  │     • 更新频率可以降低                                   │
-  │     • 启用: Landscape → Cast Far Shadow = true            │
+  │     • 专门为地形和大型物体设计                             │
+  │     • 独立于 CSM 的远距离阴影                             │
+  │     • 更新频率可以降低                                    │
+  │     • 启用: Landscape → Cast Far Shadow = true           │
   │                                                          │
   │  3. Virtual Shadow Map (UE5)                             │
-  │     • 替代 CSM 的新方案                                  │
-  │     • 基于 Page 的虚拟阴影图                             │
-  │     • 只更新变化的区域                                   │
+  │     • 替代 CSM 的新方案                                   │
+  │     • 基于 Page 的虚拟阴影图                              │
+  │     • 只更新变化的区域                                    │
   │     • 与 Nanite 深度集成                                 │
   │                                                          │
   │  4. Self-Shadow                                          │
-  │     • 地形自阴影对山脉/悬崖很重要                        │
-  │     • 可通过 Contact Shadow 增强近距离细节               │
+  │     • 地形自阴影对山脉/悬崖很重要                          │
+  │     • 可通过 Contact Shadow 增强近距离细节                 │
   └──────────────────────────────────────────────────────────┘
 ```
 
@@ -1243,89 +1247,89 @@ Unreal 的解决方案：
   │                                                          │
   │  减少 Draw Call 的方法：                                  │
   │                                                          │
-  │  1. 增大 Component 尺寸                                  │
+  │  1. 增大 Component 尺寸                                   │
   │     • 更大的 Section Size → 更少的 Component              │
-  │     • 权衡: LOD 粒度降低                                 │
+  │     • 权衡: LOD 粒度降低                                  │
   │                                                          │
-  │  2. 使用 Nanite Landscape（UE5.2+）                      │
+  │  2. 使用 Nanite Landscape（UE5.2+）                       │
   │     • GPU Driven → 极少 Draw Call                        │
   │                                                          │
   │  3. 优化 Occlusion Culling                               │
-  │     • 确保遮挡剔除正常工作                               │
-  │     • 山脉后面的 Component 应被剔除                      │
+  │     • 确保遮挡剔除正常工作                                 │
+  │     • 山脉后面的 Component 应被剔除                       │
   │                                                          │
   │  4. 减少 Pass 数                                         │
-  │     • 避免不必要的 Custom Depth Pass                     │
-  │     • 优化阴影 Cascade 数量                              │
+  │     • 避免不必要的 Custom Depth Pass                      │
+  │     • 优化阴影 Cascade 数量                               │
   │                                                          │
   │  典型数据：                                               │
-  │  • 4km × 4km, 63×63 Section, 2×2 Section/Comp           │
+  │  • 4km × 4km, 63×63 Section, 2×2 Section/Comp            │
   │  • Component 数: ~1024                                   │
-  │  • 可见 Component: ~200-400（视角依赖）                  │
+  │  • 可见 Component: ~200-400（视角依赖）                   │
   │  • Base Pass Draw Call: 200-400                          │
   │  • + Shadow Pass: ×3-4 Cascade = 600-1600                │
-  │  • 总计: 800-2000 Draw Call（仅地形）                    │
+  │  • 总计: 800-2000 Draw Call（仅地形）                     │
   └──────────────────────────────────────────────────────────┘
 ```
 
 ### 11.2 内存优化
 
 ```
-  ┌──────────────────────────────────────────────────────────┐
-  │  地形内存组成                                             │
-  │                                                          │
-  │  ┌────────────────────────┬──────────┬──────────────────┐│
-  │  │  数据类型               │ 大小估算  │ 优化方法         ││
-  │  ├────────────────────────┼──────────┼──────────────────┤│
-  │  │  Heightmap Texture     │ 64 MB    │ 压缩/Streaming   ││
-  │  │  Weightmap Texture     │ 128 MB   │ 减少层数         ││
-  │  │  Collision Data        │ 32 MB    │ 提高 Collision   ││
-  │  │                        │          │ Mip Level        ││
-  │  │  Vertex Buffer         │ 16 MB    │ LOD 减少         ││
-  │  │  Index Buffer          │ 8 MB     │ 共享 IB          ││
-  │  │  Material Textures     │ 变化大   │ VT / 压缩        ││
-  │  │  Grass Instance Data   │ 变化大   │ 减少密度/距离    ││
-  │  ├────────────────────────┼──────────┼──────────────────┤│
-  │  │  总计（4km²，8层）     │ ~250 MB  │                  ││
-  │  └────────────────────────┴──────────┴──────────────────┘│
-  │                                                          │
-  │  关键优化：                                               │
-  │  • Texture Streaming: 远处使用低 Mip                     │
-  │  • World Partition: 只加载可见区域                        │
-  │  • Shared Index Buffer: 相同 LOD 的 Section 共享 IB      │
-  │  • Collision Mip: 降低碰撞精度                           │
-  └──────────────────────────────────────────────────────────┘
+  ┌───────────────────────────────────────────────────────────┐
+  │  地形内存组成                                              │
+  │                                                           │
+  │  ┌────────────────────────┬──────────┬──────────────────┐ │
+  │  │  数据类型               │ 大小估算  │ 优化方法         │ │
+  │  ├────────────────────────┼──────────┼──────────────────┤ │
+  │  │  Heightmap Texture     │ 64 MB    │ 压缩/Streaming   │  │
+  │  │  Weightmap Texture     │ 128 MB   │ 减少层数          │ │
+  │  │  Collision Data        │ 32 MB    │ 提高 Collision   │  │
+  │  │                        │          │ Mip Level        │ │
+  │  │  Vertex Buffer         │ 16 MB    │ LOD 减少         │  │
+  │  │  Index Buffer          │ 8 MB     │ 共享 IB          │  │
+  │  │  Material Textures     │ 变化大   │ VT / 压缩         │ │
+  │  │  Grass Instance Data   │ 变化大   │ 减少密度/距离     │  │
+  │  ├────────────────────────┼──────────┼──────────────────┤ │
+  │  │  总计（4km²，8层）      │ ~250 MB  │                  │ │
+  │  └────────────────────────┴──────────┴──────────────────┘ │
+  │                                                           │
+  │  关键优化：                                                │
+  │  • Texture Streaming: 远处使用低 Mip                       │
+  │  • World Partition: 只加载可见区域                         │
+  │  • Shared Index Buffer: 相同 LOD 的 Section 共享 IB        │
+  │  • Collision Mip: 降低碰撞精度                             │
+  └───────────────────────────────────────────────────────────┘
 ```
 
 ### 11.3 GPU 性能优化
 
 ```
   ┌──────────────────────────────────────────────────────────┐
-  │  GPU 瓶颈分析                                            │
+  │  GPU 瓶颈分析                                             │
   │                                                          │
   │  1. Vertex Shader 瓶颈                                   │
-  │     • 症状: 大量顶点处理                                 │
-  │     • 优化: 调整 LOD 参数，减少近处 LOD 0 范围           │
+  │     • 症状: 大量顶点处理                                  │
+  │     • 优化: 调整 LOD 参数，减少近处 LOD 0 范围             │
   │                                                          │
-  │  2. Pixel Shader 瓶颈（最常见）                          │
-  │     • 症状: 多层材质混合开销大                           │
+  │  2. Pixel Shader 瓶颈（最常见）                           │
+  │     • 症状: 多层材质混合开销大                             │
   │     • 优化:                                              │
-  │       - 使用 RVT 缓存混合结果                            │
-  │       - 减少每 Component 的层数                          │
-  │       - 简化远处材质                                     │
-  │       - 使用 Texture Array 减少采样次数                  │
+  │       - 使用 RVT 缓存混合结果                             │
+  │       - 减少每 Component 的层数                           │
+  │       - 简化远处材质                                      │
+  │       - 使用 Texture Array 减少采样次数                   │
   │                                                          │
-  │  3. 带宽瓶颈                                             │
-  │     • 症状: 大量纹理采样                                 │
+  │  3. 带宽瓶颈                                              │
+  │     • 症状: 大量纹理采样                                  │
   │     • 优化:                                              │
-  │       - 使用纹理压缩（BC/ASTC）                          │
-  │       - 减少纹理分辨率                                   │
-  │       - VT 减少采样数                                    │
+  │       - 使用纹理压缩（BC/ASTC）                           │
+  │       - 减少纹理分辨率                                    │
+  │       - VT 减少采样数                                     │
   │                                                          │
   │  4. Overdraw                                             │
-  │     • 地形通常 Overdraw 较低（不透明）                   │
-  │     • 但草地 Alpha Test 会导致严重 Overdraw              │
-  │     • 优化: 草地使用 Dithered LOD Transition             │
+  │     • 地形通常 Overdraw 较低（不透明）                     │
+  │     • 但草地 Alpha Test 会导致严重 Overdraw               │
+  │     • 优化: 草地使用 Dithered LOD Transition              │
   └──────────────────────────────────────────────────────────┘
 ```
 
@@ -1336,23 +1340,23 @@ Unreal 的解决方案：
   │  World Partition Streaming 调优                           │
   │                                                          │
   │  • Grid Cell Size:                                       │
-  │    - 太小: 频繁加载/卸载，IO 压力大                      │
-  │    - 太大: 内存浪费，加载延迟高                          │
+  │    - 太小: 频繁加载/卸载，IO 压力大                        │
+  │    - 太大: 内存浪费，加载延迟高                            │
   │    - 推荐: 256m - 512m                                   │
   │                                                          │
   │  • Loading Range:                                        │
-  │    - 根据移动速度调整                                    │
+  │    - 根据移动速度调整                                     │
   │    - 步行: 2-3 个 Cell                                   │
   │    - 载具: 4-6 个 Cell                                   │
   │                                                          │
   │  • Async Loading:                                        │
-  │    - 使用异步加载避免卡顿                                │
-  │    - 设置加载优先级                                      │
-  │    - 预加载移动方向的 Cell                               │
+  │    - 使用异步加载避免卡顿                                 │
+  │    - 设置加载优先级                                       │
+  │    - 预加载移动方向的 Cell                                │
   │                                                          │
   │  • IO 优化:                                              │
-  │    - 使用 Pak 文件减少 IO 次数                           │
-  │    - 启用 IO Store（UE5）                                │
+  │    - 使用 Pak 文件减少 IO 次数                            │
+  │    - 启用 IO Store（UE5）                                 │
   │    - SSD 推荐                                            │
   └──────────────────────────────────────────────────────────┘
 ```
@@ -1363,26 +1367,26 @@ Unreal 的解决方案：
   ┌──────────────────────────────────────────────────────────┐
   │  移动端地形优化清单                                       │
   │                                                          │
-  │  几何：                                                   │
-  │  □ 降低 Section Size（31×31 或 15×15）                   │
-  │  □ 提高最低 LOD 级别                                     │
-  │  □ 减少可见距离                                          │
+  │  几何：                                                  │
+  │  □ 降低 Section Size（31×31 或 15×15）                    │
+  │  □ 提高最低 LOD 级别                                      │
+  │  □ 减少可见距离                                           │
   │                                                          │
-  │  材质：                                                   │
-  │  □ 限制最多 3-4 层                                       │
-  │  □ 使用 ASTC 纹理压缩                                   │
-  │  □ 简化 Shader（去掉 Parallax/Tessellation）             │
-  │  □ 考虑使用 RVT 降低 PS 开销                             │
+  │  材质：                                                  │
+  │  □ 限制最多 3-4 层                                        │
+  │  □ 使用 ASTC 纹理压缩                                     │
+  │  □ 简化 Shader（去掉 Parallax/Tessellation）              │
+  │  □ 考虑使用 RVT 降低 PS 开销                              │
   │                                                          │
   │  内存：                                                   │
-  │  □ 降低 Heightmap/Weightmap 分辨率                       │
+  │  □ 降低 Heightmap/Weightmap 分辨率                        │
   │  □ 提高 Collision Mip Level                              │
-  │  □ 减少 Grass 密度和距离                                 │
+  │  □ 减少 Grass 密度和距离                                  │
   │                                                          │
   │  带宽（TBR 架构）：                                       │
-  │  □ 减少 GBuffer RT 数量                                  │
-  │  □ 使用 16-bit 精度                                      │
-  │  □ 避免不必要的 Load/Store                               │
+  │  □ 减少 GBuffer RT 数量                                   │
+  │  □ 使用 16-bit 精度                                       │
+  │  □ 避免不必要的 Load/Store                                │
   └──────────────────────────────────────────────────────────┘
 ```
 
@@ -1551,7 +1555,7 @@ A:
 □ 考虑 Nanite Foliage（UE5.3+）
 ```
 
----
+<!-- ---
 
 ## 参考资源
 
@@ -1569,4 +1573,4 @@ A:
 • GDC 2019: "Large Worlds in UE4"
 • Unreal Fest 2022: "Nanite & Landscape"
 • Epic Games: "Building Open Worlds" (Fortnite Case Study)
-```
+``` -->
