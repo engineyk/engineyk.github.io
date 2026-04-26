@@ -37,21 +37,21 @@ tags:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     业务层 (Game Logic)                      │
-│         AssetManager.LoadGameObject / LoadTextAsset          │
+│         AssetManager.LoadGameObject / LoadTextAsset         │
 ├─────────────────────────────────────────────────────────────┤
-│                   资源管理层 (ResLoadManager)                 │
-│    优先级队列 / 分组管理 / 回调分帧 / 泄露检查 / 统计监控      │
+│                   资源管理层 (ResLoadManager)                │
+│    优先级队列 / 分组管理 / 回调分帧 / 泄露检查 / 统计监控       │
 ├─────────────────────────────────────────────────────────────┤
-│                   加载适配层 (IResLoad)                       │
-│         AddressableResLoad / YooAssetResLoad                 │
+│                   加载适配层 (IResLoad)                      │
+│         AddressableResLoad / YooAssetResLoad                │
 ├─────────────────────────────────────────────────────────────┤
-│                   Bundle 层 (AssetBundle)                    │
-│     LoadFromFile / LoadFromStream / LoadFromMemory           │
+│                   Bundle 层 (AssetBundle)                   │
+│     LoadFromFile / LoadFromStream / LoadFromMemory          │
 ├─────────────────────────────────────────────────────────────┤
-│                   文件系统层 (SFP/VFS)                        │
-│     IO池 / 加密解密 / OffsetStream / APK读取                  │
+│                   文件系统层 (SFP/VFS)                       │
+│     IO池 / 加密解密 / OffsetStream / APK读取                 │
 ├─────────────────────────────────────────────────────────────┤
-│                   网络层 (Network/CDN)                        │
+│                   网络层 (Network/CDN)                       │
 │     HTTP下载 / 断点续传 / 缓存校验 / 平台API                  │
 └─────────────────────────────────────────────────────────────┘
 ```
