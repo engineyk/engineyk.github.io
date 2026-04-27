@@ -1,4 +1,4 @@
-set curDir="%~dp0%"
+set curDir=%~dp0%
 cd /d %curDir%
 
 python gen_resources.py --input "%curDir%/_posts"
