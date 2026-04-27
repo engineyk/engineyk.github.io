@@ -11,18 +11,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Scan W:\git\engineyk.github.io\_posts directory,
+Scan blog post directory,
 generate resources.html with subdirectories as categories
 and files as list items.
+
+Usage:
+    python gen_resources.py --input DIR --output FILE
+    python gen_resources.py -i DIR -o FILE
+    python gen_resources.py (uses defaults)
 """
 
 import os
 import re
+import sys
+import argparse
 from pathlib import Path
 
-# Config
-POSTS_DIR = r"W:\git\engineyk.github.io\_posts"
-OUTPUT_FILE = r"W:\git\engineyk.github.io\resources.html"
+# Default config (fallback if no arguments provided)
+DEFAULT_POSTS_DIR = r"W:\git\engineyk.github.io\_posts"
+DEFAULT_OUTPUT_FILE = r"W:\git\engineyk.github.io\resources.html"
 
 # Jekyll date prefix pattern: YYYY-MM-DD-title.md
 DATE_PATTERN = re.compile(r'^(\d{4})-(\d{2})-(\d{2})-(.+)$')
@@ -248,8 +255,44 @@ def generate_html(tree: dict) -> str:
 
 
 def main():
-    print(f"Scanning: {POSTS_DIR}")
-    tree = scan_posts(POSTS_DIR)
+    """Main function with command-line argument support."""
+    parser = argparse.ArgumentParser(
+        description='Generate resources.html from blog posts directory.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s --input W:\git\engineyk.github.io\_posts --output W:\git\engineyk.github.io\resources.html
+  %(prog)s -i C:\myblog\_posts -o C:\myblog\output.html
+  %(prog)s (uses default paths)
+        """
+    )
+    
+    parser.add_argument('-i', '--input',
+                        help='Input directory containing blog posts (default: %(default)s)',
+                        default=DEFAULT_POSTS_DIR)
+    parser.add_argument('-o', '--output',
+                        help='Output HTML file path (default: %(default)s)',
+                        default=DEFAULT_OUTPUT_FILE)
+    parser.add_argument('--no-defaults', action='store_true',
+                        help='Require explicit input/output arguments (disable defaults)')
+    
+    args = parser.parse_args()
+    
+    # If no-defaults flag is set, require explicit arguments
+    if args.no_defaults:
+        if args.input == DEFAULT_POSTS_DIR:
+            parser.error("Please specify --input when using --no-defaults")
+        if args.output == DEFAULT_OUTPUT_FILE:
+            parser.error("Please specify --output when using --no-defaults")
+    
+    posts_dir = args.input
+    output_file = args.output
+    
+    print(f"Input directory: {posts_dir}")
+    print(f"Output file: {output_file}")
+    print(f"Scanning: {posts_dir}")
+    
+    tree = scan_posts(posts_dir)
 
     total_files = 0
     def count_files(node):
@@ -278,10 +321,10 @@ def main():
 
     html_content = generate_html(tree)
 
-    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+    with open(output_file, 'w', encoding='utf-8') as f:
         f.write(html_content)
 
-    print(f"\n[OK] Generated: {OUTPUT_FILE}")
+    print(f"\n[OK] Generated: {output_file}")
 
 
 if __name__ == '__main__':
