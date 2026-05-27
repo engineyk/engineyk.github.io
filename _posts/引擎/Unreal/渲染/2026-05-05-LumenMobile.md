@@ -11,7 +11,6 @@ tags:
 
 # 移动端 Lumen（Mobile Lumen）
 
-> 官方文档：[移动端 Lumen](https://dev.epicgames.com/documentation/zh-cn/unreal-engine/using-lumen-global-illumination-on-mobile-in-unreal-engine) — UE **5.4+ 实验性**（UE5.6 仍为 Experimental），官方明确不推荐用于正式上线项目，但可做技术储备与预研。
 
 ## A.1 兼容性矩阵
 
