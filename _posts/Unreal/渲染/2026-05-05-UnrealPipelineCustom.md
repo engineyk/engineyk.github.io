@@ -9,5 +9,5 @@ tags:
     - 渲染
 ---
 
-![草](https://res.cloudinary.com/dyjxpjxro/image/upload/v1775720124/渲染管线修改_pukwvo.jpg)
+![草](https://res.cloudinary.com/dyjxpjxro/image/upload/v1775720124/渲染管线修改_jezm4k.jpg)
 ![草](https://res.cloudinary.com/dyjxpjxro/image/upload/v1775720124/渲染管线天空效果_rc2lah.jpg)
